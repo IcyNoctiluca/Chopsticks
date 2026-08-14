@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 01
 
+**Status:** Complete
+
 **Outcome:** A framework-free deterministic engine with an intentionally small public API.
 
 ## Work
