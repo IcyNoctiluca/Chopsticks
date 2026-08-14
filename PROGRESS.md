@@ -2,14 +2,14 @@
 
 ## Current state
 
-**Active phase:** Phase 01 - Rules specification
+**Active phase:** Phase 02 - Engine foundation
 
-**Status:** Phase 00 complete; ready to write `docs/rules-v0.1.md`
+**Status:** Phase 01 complete; `docs/rules-v0.1.md` written and linked
 **Last updated:** 2026-08-14
 
 ## Next action
 
-Write and review the versioned rules document per [Phase 01](PHASES/01-rules-specification.md), drawing on the accepted ruleset decisions below.
+Start Phase 02: build the framework-free core engine API (`createGame`, `getLegalMoves`, `isLegalMove`, `applyMove`, `getWinner`) and accompanying tests, implementing `classic-v1` as specified in `docs/rules-v0.1.md`.
 
 ## Decision log
 
@@ -17,6 +17,7 @@ Write and review the versioned rules document per [Phase 01](PHASES/01-rules-spe
 | --- | --- | --- | --- |
 | 2026-08-10 | Use an engine-first workflow | Accepted | Interfaces will depend on one deterministic rules engine. |
 | 2026-08-14 | Initial ruleset choices | Accepted | All nine Phase 00 questions answered; none postponed. See "Ruleset decisions (Phase 00)" below. |
+| 2026-08-14 | Ruleset specification `classic-v1` (doc v0.1) | Accepted | `docs/rules-v0.1.md` answers all Phase 00 questions; linked from README. Draft pending freeze in Phase 04. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -52,8 +53,8 @@ Write and review the versioned rules document per [Phase 01](PHASES/01-rules-spe
 | Phase | Status | Evidence / next step |
 | --- | --- | --- |
 | 00 - Rules decision | Complete | All 9 decisions recorded above; 5 worked positions checked; none postponed. |
-| 01 - Rules specification | In progress | Write and review `docs/rules-v0.1.md`; link from README; record version here. |
-| 02 - Engine foundation | Not started | Create the framework-free core API and tests. |
+| 01 - Rules specification | Complete | `docs/rules-v0.1.md` written (`classic-v1`, doc v0.1); answers all Phase 00 questions; linked from README; 5 worked examples included. |
+| 02 - Engine foundation | In progress | Implement `classic-v1` core API + tests per `docs/rules-v0.1.md`. |
 | 03 - Verification and CLI | Not started | Achieve strong automated coverage and a playable terminal prototype. |
 | 04 - Analysis and rules freeze | Not started | Enumerate states, assess balance, and freeze v1. |
 | 05 - Product foundation | Not started | Add history, replay, AI, and session orchestration. |
