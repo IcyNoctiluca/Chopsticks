@@ -2,28 +2,57 @@
 
 ## Current state
 
-**Active phase:** Phase 00 - Rules decision
+**Active phase:** Phase 01 - Rules specification
 
-**Status:** Not started
-**Last updated:** 2026-08-10
+**Status:** Phase 00 complete; ready to write `docs/rules-v0.1.md`
+**Last updated:** 2026-08-14
 
 ## Next action
 
-Choose the initial ruleset decisions in [Phase 00](PHASES/00-rules-decision.md), then turn them into a versioned specification in Phase 01.
+Write and review the versioned rules document per [Phase 01](PHASES/01-rules-specification.md), drawing on the accepted ruleset decisions below.
 
 ## Decision log
 
 | Date | Decision | Status | Notes |
 | --- | --- | --- | --- |
 | 2026-08-10 | Use an engine-first workflow | Accepted | Interfaces will depend on one deterministic rules engine. |
-| 2026-08-10 | Initial ruleset choices | Pending | Tap mode, elimination behaviour, self-taps, redistribution, and loop handling need explicit decisions. |
+| 2026-08-14 | Initial ruleset choices | Accepted | All nine Phase 00 questions answered; none postponed. See "Ruleset decisions (Phase 00)" below. |
+
+## Ruleset decisions (Phase 00)
+
+| # | Topic | Decision |
+| --- | --- | --- |
+| 1 | Tap mode | Additive: new target value = target + source hand value. |
+| 2 | Elimination | A hand dies (becomes 0) when its value reaches 5 or more. |
+| 3 | Attacking hands | Source must be living. May tap any living hand, including your own other living hand (self-tap). Dead hands cannot be targeted. |
+| 4 | Redistribution | Allowed only when one of your hands is dead (revival). Must preserve the total of your two hands. Must change the position. |
+| 5 | Intentional closure | No: a redistribution must leave both hands alive (>=1). You cannot voluntarily zero one of your own hands. |
+| 6 | Hand identity | Left and right are distinct and tracked separately; they matter for rules and history. |
+| 7 | End of game | A player loses when both their hands are dead. A non-terminal position with no legal moves means the player to move loses. |
+| 8 | Repetition | Allowed; no special loop rule. Relies on normal play / deadlock handling. |
+| 9 | Opening fairness | Starting player alternates each game of a match; recorded in the game state. |
+
+**Working ruleset identifier:** `classic-v1` (to be confirmed in Phase 01).
+
+### Notes on consistency
+
+- From the start `A:[1,1] B:[1,1] turn:A`, taps (including self-tap) are legal, so the game admits at least one legal move.
+- A non-terminal deadlock is effectively unreachable: whenever the game is non-terminal, both players have at least one living hand, so the player to move always has at least one legal tap. Decision 7 is therefore a defensive specification that does not trigger in normal play.
+
+### Worked positions (manually checked)
+
+1. **Normal tap.** `A:[1,1] B:[1,1] turn:A`. A taps B-left: 1+1=2 < 5 -> `A:[1,1] B:[2,1] turn:B`. Legal.
+2. **Elimination.** `A:[1,1] B:[4,1] turn:A`. A-left(1) taps B-left(4): 4+1=5 >= 5 -> B-left dies -> `A:[1,1] B:[0,1] turn:B`. Legal.
+3. **Revival redistribution.** `A:[3,0] B:[1,1] turn:A`. A has a dead hand; redistribution allowed, total 3, both results must be 1..4 and differ from (3,0). Valid splits: (2,1) and (1,2). Transferring all 3 (-> 0,3) is banned by intentional-closure. -> `A:[2,1] B:[1,1] turn:B`. Legal.
+4. **Self-tap.** `A:[3,1] B:[2,2] turn:A`. A-left(3) taps A-right(1): 1+3=4 < 5 -> `A:[3,4] B:[2,2] turn:B`. Additive; not a redistribution. Legal.
+5. **Game completion.** `A:[4,4] B:[1,0] turn:A`. A-left(4) taps B-right(1): 1+4=5 >= 5 -> B-right dies -> `B:[0,0]`. Both B hands dead -> A wins. Legal.
 
 ## Phase tracker
 
 | Phase | Status | Evidence / next step |
 | --- | --- | --- |
-| 00 - Rules decision | In progress | Make the choices listed in `PHASES/00-rules-decision.md`. |
-| 01 - Rules specification | Not started | Write and review the versioned rules document. |
+| 00 - Rules decision | Complete | All 9 decisions recorded above; 5 worked positions checked; none postponed. |
+| 01 - Rules specification | In progress | Write and review `docs/rules-v0.1.md`; link from README; record version here. |
 | 02 - Engine foundation | Not started | Create the framework-free core API and tests. |
 | 03 - Verification and CLI | Not started | Achieve strong automated coverage and a playable terminal prototype. |
 | 04 - Analysis and rules freeze | Not started | Enumerate states, assess balance, and freeze v1. |
@@ -33,4 +62,4 @@ Choose the initial ruleset decisions in [Phase 00](PHASES/00-rules-decision.md),
 
 ## Blockers
 
-- No technical blocker. Phase 00 requires product decisions from the game designer.
+- None. Phase 00 is complete; Phase 01 has no technical blockers.
