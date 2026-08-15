@@ -4,13 +4,16 @@
 
 **`classic-v1`**
 
-This is the first official ruleset. Its behaviour is fixed and reproducible: any future gameplay change must be published as a new ruleset version, not a silent edit to `classic-v1`. The ruleset is frozen at the end of Phase 04; until then this document is a draft labelled `v0.1`.
+This is the first official ruleset. Its behaviour is fixed and reproducible: any future gameplay change must be published as a new ruleset version, not a silent edit to `classic-v1`. ~~The ruleset is frozen at the end of Phase 04; until then this document is a draft labelled `v0.1`.~~
+
+> **Frozen (Phase 04, 2026-08-15).** The analysis in `docs/analysis.md` confirmed the ruleset is balanced (opening value: DRAW, no first-player advantage) and internally consistent. `classic-v1` is now the frozen official ruleset at document version `v1.0`; the `v0.1` draft label is superseded. Behaviour is unchanged from the draft. See `docs/analysis.md` for the game-theoretic profile.
 
 ### Document changelog
 
 | Version | Date | Change |
 | --- | --- | --- |
 | v0.1 | 2026-08-14 | Initial draft from the Phase 00 decisions. |
+| v1.0 | 2026-08-15 | Frozen. No behavioural change from v0.1. Phase 04 analysis confirmed balance and consistency (see `docs/analysis.md`). |
 
 ---
 

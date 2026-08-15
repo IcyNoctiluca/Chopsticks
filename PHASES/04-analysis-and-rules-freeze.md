@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 03
 
+**Status:** Complete
+
 **Outcome:** Evidence that the ruleset is viable, or a documented revision loop.
 
 ## Work
