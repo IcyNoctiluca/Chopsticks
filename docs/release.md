@@ -54,6 +54,10 @@ Server → client:
 
 Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
 
+## Persistence
+
+Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence.ts`). By default the server writes to `data/rooms.json`; set `ROOM_STORE_PATH` to use a different location. The store is loaded when `MatchServer` starts and updated after every room mutation. For production at scale, swap `FileRoomStore` for a Redis/DB-backed implementation behind the same `RoomStore` interface.
+
 ## Server-authoritative guarantees (client cannot alter state)
 
 - Every move is validated by the engine's `isLegalMove` against the authoritative state before `applyMoveToRecord`.
@@ -62,7 +66,7 @@ Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
 - Ruleset and engine-version compatibility are recorded per room; a move is rejected if the room's ruleset doesn't match the authoritative state's ruleset (`incompatible-ruleset`).
 - Finished and abandoned matches reject all further submissions (`match-finished`, `match-abandoned`).
 
-These are covered by integration tests in `tests/server.test.ts` (88 tests passing).
+These are covered by integration tests in `tests/server.test.ts`, `tests/server-ws.test.ts`, and `tests/server-persistence.test.ts` (101 tests passing across all suites).
 
 ## Reconnect and stale-move behaviour
 

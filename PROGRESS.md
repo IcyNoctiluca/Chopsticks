@@ -2,15 +2,15 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — WebSocket real-time transport in progress
+**Active phase:** Post-roadmap — file-backed room persistence in progress
 
-**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7; iOS native shell merged in PR #8. A WebSocket transport wrapping `MatchServer` is implemented on branch `phase-08-websocket-transport` and provides real-time room state broadcasts. Tests pass (96/96).
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7; iOS native shell merged in PR #8; WebSocket transport merged in PR #10/#11. A file-backed `RoomStore` is implemented and wired into the production server so rooms survive process restarts. Tests pass (101/101).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-1. **Complete and merge the WebSocket transport PR** — review `server/ws.ts`, ensure message protocol is documented, and merge.
-2. **Choose the next follow-up:** persistent room store, tournament draw rule, or native iOS polish.
+1. **Complete and merge the persistence PR** — review `server/persistence.ts` integration, ensure `data/` is ignored and deployment notes are documented, and merge.
+2. **Choose the next follow-up:** tournament draw rule (`classic-tournament-v1`) or native iOS polish.
 
 ## Decision log
 
