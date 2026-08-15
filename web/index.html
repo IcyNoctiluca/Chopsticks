@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Chopsticks</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" aria-live="polite">
+      <h1>Chopsticks</h1>
+      <p id="status" aria-live="assertive">Loading...</p>
+      <section id="board" aria-label="Game board">
+        <div id="hands-b" class="player" data-player="B"></div>
+        <div class="divider"></div>
+        <div id="hands-a" class="player" data-player="A"></div>
+      </section>
+      <section id="moves" aria-label="Legal moves"></section>
+      <nav id="controls">
+        <button id="btn-undo" type="button">Undo</button>
+        <button id="btn-restart" type="button">Restart game</button>
+        <button id="btn-newmatch" type="button">New match</button>
+        <button id="btn-rules" type="button">Rules</button>
+        <label class="toggle">
+          <input id="ai-toggle" type="checkbox" /> Player B = AI (random)
+        </label>
+      </nav>
+      <section id="rules" hidden>
+        <h2>Rules (classic-v1)</h2>
+        <ul>
+          <li>Each player has two hands (L/R) starting at 1.</li>
+          <li>Tap: choose one of your living hands and add its value to a living target hand (your other hand or an opponent's hand).</li>
+          <li>A hand reaching 5 or more dies (becomes 0) and is out.</li>
+          <li>Split (revival only): if one of your hands is dead, redistribute your total across both hands; both must be 1+.</li>
+          <li>Win by making both of the opponent's hands dead.</li>
+        </ul>
+      </section>
+      <button id="btn-close-rules" hidden type="button">Close rules</button>
+    </main>
+    <script type="module" src="./client.ts"></script>
+  </body>
+</html>

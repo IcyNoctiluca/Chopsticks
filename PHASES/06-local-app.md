@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 05
 
+**Status:** Complete
+
 **Outcome:** A polished local two-player application built on the stable engine.
 
 ## Work
