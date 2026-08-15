@@ -19,6 +19,8 @@ Work through the phase files in order. A phase is complete only when its exit cr
 7. [Phase 06 - Local app](PHASES/06-local-app.md)
 8. [Phase 07 - Online play and release](PHASES/07-online-play-and-release.md)
 
+The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, draft pending freeze in Phase 04). The engine API is documented in [docs/api.md](docs/api.md).
+
 See [DESIGN.md](DESIGN.md) for architecture and [PROGRESS.md](PROGRESS.md) for the current project state.
 
 ## Guiding principle

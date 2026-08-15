@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 00
 
+**Status:** Complete
+
 **Outcome:** A versioned rules document that two independent implementations would interpret the same way.
 
 ## Work
