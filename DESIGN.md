@@ -57,3 +57,12 @@ The first official ruleset should be explicitly named (for example, `classic-v1`
 ## Compatibility and trust
 
 For online play, the client submits intended moves. The server loads the authoritative state, checks the expected turn/version, validates and applies the move through the engine, then broadcasts the resulting state. Clients never authoritatively calculate outcomes.
+
+## Client portability
+
+The engine and session layers are plain TypeScript and run anywhere (web, Node server, React Native via Hermes). The single-engine principle means the same `@chopsticks/engine` and `session/` code powers the web MVP and the future iOS React Native app. UI rendering is platform-specific by nature and is **not** expected to port:
+
+- **Web client** (current MVP): DOM + CSS + inline SVG. Used to prove the engine/session/server end-to-end and as the shippable MVP.
+- **iOS React Native app** (target): `<View>` + StyleSheet + Reanimated + `react-native-svg`. Built on the same engine/session APIs; rendering code is written natively rather than ported from the web.
+
+**Portable assets:** hand SVGs and any pure logic (move descriptions, accessibility cues) are shared across platforms. **Disposable code:** DOM layout, CSS animations, and `window`/`document`-based interaction rigging are web-only and rebuilt natively on iOS. This keeps the web MVP honest about its scope and the iOS work honest about its greenfield-UI nature.
