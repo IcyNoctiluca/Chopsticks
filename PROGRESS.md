@@ -2,14 +2,14 @@
 
 ## Current state
 
-**Active phase:** Phase 05 - Product foundation
+**Active phase:** Phase 06 - Local app
 
-**Status:** Phase 04 complete; classic-v1 frozen (v1.0, engine 0.1.0)
+**Status:** Phase 05 complete; GameRecord, replay, undo, AI, session layer shipped
 **Last updated:** 2026-08-15
 
 ## Next action
 
-Start Phase 05: add `GameRecord` (initial state + move history), deterministic replay, explicit undo policy, AI opponents (random then heuristic), and a session layer for local saves/settings.
+Start Phase 06: build the smallest usable graphical client on the stable engine/session APIs (React Native for iOS, per the tooling decision).
 
 ## Decision log
 
@@ -60,8 +60,8 @@ Start Phase 05: add `GameRecord` (initial state + move history), deterministic r
 | 02 - Engine foundation | Complete | TS+Vitest engine; `createGame`/`getLegalMoves`/`isLegalMove`/`applyMove`/`getWinner` complete; immutable; zero runtime deps; API + invalid-move contract in `docs/api.md`; 25 tests pass (all rules + worked examples 13.1-13.5). |
 | 03 - Verification and CLI | Complete | 36 tests pass (25 engine + 8 invariant/property + 3 CLI smoke). Invariants cover move legality agreement, immutability, terminal rejection, value range, turn ownership, redistribution totals. CLI (`npm run play`) renders state, lists legal moves, accepts selections, handles redistribution and game-over. Playtest via scripted simulation: game completes in 8 moves, B wins. |
 | 04 - Analysis and rules freeze | Complete | `analysis/enumerate.ts` + `docs/analysis.md`: 1142 reachable states, opening value DRAW, no first-player advantage, 510 WIN / 136 LOSS / 496 DRAW states, min 5 / max-shortest 8 moves. `classic-v1` frozen at doc v1.0, engine 0.1.0. Analysis regression test in `tests/analysis.test.ts`. |
-| 05 - Product foundation | In progress | Add history, replay, AI, and session orchestration. |
-| 06 - Local app | Not started | Build the first player-facing interface. |
+| 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
+| 06 - Local app | In progress | Build the first player-facing interface. |
 | 07 - Online play and release | Not started | Add authoritative multiplayer and polish for release. |
 
 ## Blockers

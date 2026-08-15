@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 04
 
+**Status:** Complete
+
 **Outcome:** Full game functionality that is independent of a graphical client.
 
 ## Work
