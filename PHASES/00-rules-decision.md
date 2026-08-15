@@ -1,6 +1,6 @@
 # Phase 00 - Rules decision
 
-**Status:** In progress
+**Status:** Complete
 
 **Outcome:** A chosen, internally consistent initial ruleset ready to be specified.
 
