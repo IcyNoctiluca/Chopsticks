@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, AccessibilityInfo } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createSession,
   getState,
@@ -10,9 +11,9 @@ import {
   startNextGame,
   type MatchSession,
   type MatchConfig,
-} from "../session/session.js";
-import { getLegalMoves, getWinner, type Move, type GameState } from "../src/index.js";
-import { HandSVG } from "./HandSVG.js";
+} from "../session/session";
+import { getLegalMoves, getWinner, type Move, type GameState } from "../src/index";
+import { HandSVG } from "./HandSVG";
 
 const HANDS = ["left", "right"] as const;
 
@@ -71,52 +72,54 @@ export function GameScreen(): React.ReactElement {
     : `Player ${active}'s turn — Score: A ${session.scores.A} – B ${session.scores.B}`;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Chopsticks</Text>
-      <Text
-        style={styles.status}
-        accessibilityLiveRegion="polite"
-        accessibilityRole="text"
-      >
-        {statusText}
-      </Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Chopsticks</Text>
+        <Text
+          style={styles.status}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="text"
+        >
+          {statusText}
+        </Text>
 
-      <View style={styles.board}>
-        <PlayerHands player={state.players.B} label="B" active={active === "B"} />
-        <View style={styles.divider} />
-        <PlayerHands player={state.players.A} label="A" active={active === "A"} />
-      </View>
+        <View style={styles.board}>
+          <PlayerHands player={state.players.B} label="B" active={active === "B"} />
+          <View style={styles.divider} />
+          <PlayerHands player={state.players.A} label="A" active={active === "A"} />
+        </View>
 
-      <View style={styles.moves}>
-        {winner ? (
-          <Text style={styles.muted}>Game over. Tap “New game” to play another.</Text>
-        ) : (
-          legalMoves.map((m, i) => (
-            <Pressable
-              key={i}
-              style={styles.moveBtn}
-              onPress={() => onMove(i)}
-              accessibilityLabel={describeMove(m)}
-              accessibilityRole="button"
-            >
-              <Text style={styles.moveText}>{describeMove(m)}</Text>
-            </Pressable>
-          ))
-        )}
-      </View>
+        <View style={styles.moves}>
+          {winner ? (
+            <Text style={styles.muted}>Game over. Tap “New game” to play another.</Text>
+          ) : (
+            legalMoves.map((m, i) => (
+              <Pressable
+                key={i}
+                style={styles.moveBtn}
+                onPress={() => onMove(i)}
+                accessibilityLabel={describeMove(m)}
+                accessibilityRole="button"
+              >
+                <Text style={styles.moveText}>{describeMove(m)}</Text>
+              </Pressable>
+            ))
+          )}
+        </View>
 
-      <View style={styles.controls}>
-        <Pressable style={[styles.ctrl, !canUndoInSession(session) && styles.disabled]} onPress={onUndo} accessibilityRole="button">
-          <Text style={styles.ctrlText}>Undo</Text>
-        </Pressable>
-        <Pressable style={styles.ctrl} onPress={onRestart} accessibilityRole="button">
-          <Text style={styles.ctrlText}>New game</Text>
-        </Pressable>
-        <Pressable style={styles.ctrl} onPress={onNewMatch} accessibilityRole="button">
-          <Text style={styles.ctrlText}>New match</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        <View style={styles.controls}>
+          <Pressable style={[styles.ctrl, !canUndoInSession(session) && styles.disabled]} onPress={onUndo} accessibilityRole="button">
+            <Text style={styles.ctrlText}>Undo</Text>
+          </Pressable>
+          <Pressable style={styles.ctrl} onPress={onRestart} accessibilityRole="button">
+            <Text style={styles.ctrlText}>New game</Text>
+          </Pressable>
+          <Pressable style={styles.ctrl} onPress={onNewMatch} accessibilityRole="button">
+            <Text style={styles.ctrlText}>New match</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -170,6 +173,7 @@ const COL = {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COL.bg },
+  scroll: { flex: 1 },
   content: { padding: 16, alignItems: "stretch", gap: 12 },
   title: { fontSize: 22, fontWeight: "700", textAlign: "center", color: COL.text },
   status: { textAlign: "center", color: COL.muted, fontSize: 15 },
