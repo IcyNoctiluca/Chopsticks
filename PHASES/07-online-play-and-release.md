@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 06
 
+**Status:** Complete
+
 **Outcome:** Authoritative online matches and a release-ready product.
 
 ## Work

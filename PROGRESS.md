@@ -2,14 +2,14 @@
 
 ## Current state
 
-**Active phase:** Phase 07 - Online play and release
+**Active phase:** All phases complete — MVP shippable
 
-**Status:** Phase 06 complete; web local app shipped (MVP)
+**Status:** Phase 07 complete; authoritative online match service + release docs shipped
 **Last updated:** 2026-08-15
 
 ## Next action
 
-Start Phase 07: server-authoritative online match service (intended move in, authoritative validation/state out), room/reconnect/stale-move/timeout, ruleset version compatibility, tutorial/polish, release ops.
+The phase roadmap (00–07) is complete and the MVP is shippable. Suggested follow-ups (logged below as non-blocking): iOS React Native app (needs macOS build env), persistent room storage across server restarts, WebSocket real-time transport, and a tournament draw rule (`classic-tournament-v1`).
 
 ## Decision log
 
@@ -22,6 +22,7 @@ Start Phase 07: server-authoritative online match service (intended move in, aut
 | 2026-08-15 | Freeze `classic-v1` at doc v1.0, engine 0.1.0 | Accepted | Phase 04 retrograde analysis (`docs/analysis.md`): opening value DRAW, no first-player advantage, 1142 reachable states. Behaviour unchanged from v0.1 draft. No draw rule; cycles allowed (Phase 00 decision 8). |
 | 2026-08-15 | Draw mechanism deferred to a future ruleset / online match policy | Accepted | classic-v1 has no automatic draw; online play can lock into infinite loops. A `classic-tournament` variant or server-side move cap will be added in Phase 07. Owner: this project. |
 | 2026-08-15 | Phase 06 local app = web client (Vite, vanilla TS) instead of React Native/iOS | Accepted | Engine is TS shared via RN for iOS per the tooling decision, but iOS RN cannot build/test inside the Linux dev container (no Xcode/simulator). MVP local app shipped as a browser web client using the same engine/session APIs; genuinely two-player and shippable. React Native iOS app is a follow-up once a macOS/iOS build environment is available. Logged as a worked-around blocker below. |
+| 2026-08-15 | Phase 07 transport = HTTP request/response (not WebSocket) for MVP | Accepted | A framework-free `MatchServer` authoritative module + thin `node:http` wrapper. WS real-time transport wraps the same `MatchServer` later; HTTP MVP keeps the failure surface small and is fully testable. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -63,12 +64,14 @@ Start Phase 07: server-authoritative online match service (intended move in, aut
 | 04 - Analysis and rules freeze | Complete | `analysis/enumerate.ts` + `docs/analysis.md`: 1142 reachable states, opening value DRAW, no first-player advantage, 510 WIN / 136 LOSS / 496 DRAW states, min 5 / max-shortest 8 moves. `classic-v1` frozen at doc v1.0, engine 0.1.0. Analysis regression test in `tests/analysis.test.ts`. |
 | 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
-| 07 - Online play and release | In progress | Add authoritative multiplayer and polish for release. |
+| 07 - Online play and release | Complete | `server/matchServer.ts` authoritative service (rooms, turn/move-number/stale-move rejection, illegal-move + ruleset/version compatibility, reconnect/sync, AI auto-play, stale abandonment) + `server/http.ts` JSON API w/ `/health`. 18 server tests incl. HTTP health smoke. `docs/release.md` covers privacy, failure handling, deployment, support, release criteria, planned opt-in metrics. 89 tests total. **MVP shippable — all phases complete.** |
+| — | Follow-ups (non-blocking) | Scheduled | iOS RN app (needs macOS env); persistent room store across restarts (Redis/DB); WebSocket real-time transport wrapping `MatchServer`; tournament draw rule (`classic-tournament-v1`) for ranked online play. |
 
 ## Blockers
 
-- None blocking the MVP.
+- None blocking the MVP. **All phases 00–07 complete.**
 - **Worked around:** React Native / iOS cannot be built or tested inside the Linux dev container (no Xcode, no iOS simulator). Phase 06 local app shipped as a browser web client instead; the iOS RN app is a follow-up requiring a macOS build environment. Owner: this project.
+- **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
 
 ## Playtest findings (Phase 03)
 
