@@ -2,15 +2,19 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — file-backed room persistence in progress
+**Active phase:** Post-roadmap — MVP-plus shippable; follow-ups remain
 
-**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7; iOS native shell merged in PR #8; WebSocket transport merged in PR #10/#11. A file-backed `RoomStore` is implemented and wired into the production server so rooms survive process restarts. Tests pass (101/101).
+**Status:** All phases 00–07 complete (MVP shippable). Post-roadmap deliverables merged: web polish (PR #7), iOS native shell (PR #8), WebSocket transport (PRs #10/#11), and file-backed room persistence (PR #12). The server now supports HTTP + WebSocket, authoritative moves, AI opponents, and restart-safe rooms. The iOS app builds and runs on the simulator with SVG hands, legal moves, AI toggle, rules modal, and safe-area layout. Tests pass (101/101).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-1. **Complete and merge the persistence PR** — review `server/persistence.ts` integration, ensure `data/` is ignored and deployment notes are documented, and merge.
-2. **Choose the next follow-up:** tournament draw rule (`classic-tournament-v1`) or native iOS polish.
+The product is shippable as an MVP-plus. Remaining non-blocking follow-ups (pick one to continue):
+
+1. **Tournament draw rule** (`classic-tournament-v1`) — detect repeated positions and declare a draw for ranked online play.
+2. **Native iOS polish** — animations, haptics, deeper accessibility refinements.
+3. **Client-side online play UI** — web/iOS screens that connect to the WebSocket/HTTP server.
+4. **Production hardening** — rate limiting, input validation, structured logging, health checks.
 
 ## Decision log
 
