@@ -1,0 +1,32 @@
+# Development environment for the Chopsticks engine.
+# Run typecheck, tests, builds, and the CLI inside this container to keep
+# env variables and tooling off the host machine.
+#
+# Usage:
+#   docker compose build          # build the dev image
+#   docker compose up -d          # start the dev container in the background
+#   docker compose exec dev npm run typecheck
+#   docker compose exec dev npm test
+#   docker compose exec dev npm run build
+#   docker compose exec dev npm run play     # CLI (needs a tty: use -i a llocate-tty via `docker compose run --rm -it dev npm run play`)
+#   docker compose down          # stop and remove the container
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chopsticks-dev
+    # Bind-mount the workspace so host edits are reflected live, while
+    # node_modules stays inside the container (overlaid via anonymous volume)
+    # to avoid host/architecture mismatch.
+    volumes:
+      - .:/app
+      - chopsticks_node_modules:/app/node_modules
+    # Keep the container alive for `exec` commands.
+    stdin_open: true
+    tty: true
+    working_dir: /app
+
+volumes:
+  chopsticks_node_modules:
