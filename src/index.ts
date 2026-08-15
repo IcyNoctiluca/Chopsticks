@@ -17,3 +17,14 @@ export { getLegalMoves, isLegalMove, validateMove } from "./getLegalMoves.js";
 export { applyMove } from "./applyMove.js";
 export { getWinner } from "./getWinner.js";
 export { CLASSIC_V1 } from "./internal.js";
+export {
+  createRecord,
+  replay,
+  replayTo,
+  applyMoveToRecord,
+  undo,
+  canUndo,
+  recordWinner,
+  recordLength,
+  type GameRecord,
+} from "./record.js";
