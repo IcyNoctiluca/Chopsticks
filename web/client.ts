@@ -1,5 +1,6 @@
 import { createSession, getState, playHumanMove, advanceAITurns, undoInSession, canUndoInSession, startNextGame } from "../session/session.js";
 import { getWinner, getLegalMoves, type Move } from "../src/index.js";
+import { handSVG } from "./handSVG.js";
 
 const HANDS = ["left", "right"] as const;
 
@@ -141,14 +142,20 @@ function render(): void {
 
 function renderHands(elId: string, player: { left: number; right: number }, active: boolean): void {
   const el = document.getElementById(elId)!;
+  const playerLabel = elId.endsWith("a") ? "A" : "B";
   el.classList.toggle("active", active);
   el.innerHTML = "";
   for (const hand of HANDS) {
     const value = hand === "left" ? player.left : player.right;
+    const isDead = value === 0;
     const handDiv = document.createElement("div");
-    handDiv.className = "hand" + (value === 0 ? " dead" : "");
-    handDiv.setAttribute("aria-label", `${elId.endsWith("a") ? "A" : "B"} ${hand} ${value}`);
-    handDiv.innerHTML = `<span class="label">${elId.endsWith("a") ? "A" : "B"} ${hand[0].toUpperCase()}</span><span class="value">${value}</span>`;
+    handDiv.className = "hand" + (isDead ? " dead" : "");
+    handDiv.setAttribute("aria-label", `${playerLabel} ${hand} ${value}`);
+    handDiv.innerHTML = `
+      <span class="label">${playerLabel} ${hand[0]!.toUpperCase()}</span>
+      <span class="hand-art">${handSVG({ value, side: hand, dead: isDead })}</span>
+      <span class="value">${value}</span>
+    `;
     el.appendChild(handDiv);
   }
 }

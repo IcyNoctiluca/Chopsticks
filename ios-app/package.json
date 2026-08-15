@@ -1,0 +1,10 @@
+{
+  "name": "@chopsticks/ios-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "React Native iOS app for Chopsticks, built on the shared engine/session APIs.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

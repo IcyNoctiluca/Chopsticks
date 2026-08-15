@@ -2,14 +2,15 @@
 
 ## Current state
 
-**Active phase:** All phases complete — MVP shippable
+**Active phase:** Post-roadmap polish — minimal web UI, then iOS setup
 
-**Status:** Phase 07 complete; authoritative online match service + release docs shipped
+**Status:** All phases 00–07 complete (MVP shippable). Starting post-roadmap work: minimal web UI polish with reusable SVG hand assets, then setting up the React Native iOS build environment.
 **Last updated:** 2026-08-15
 
 ## Next action
 
-The phase roadmap (00–07) is complete and the MVP is shippable. Suggested follow-ups (logged below as non-blocking): iOS React Native app (needs macOS build env), persistent room storage across server restarts, WebSocket real-time transport, and a tournament draw rule (`classic-tournament-v1`).
+1. **Minimal web polish** — replace plain number displays with reusable SVG hand assets (fingers raised = hand value). These assets are portable to React Native (`react-native-svg`) so the visual investment is not wasted. No DOM/CSS animation rigging — that won't port to RN and will be rebuilt natively.
+2. **iOS React Native setup** — set up the RN app against a macOS/iOS build environment so the real native UI can be built. The web client stops receiving new UI work after polish; it remains the shippable MVP and the engine/session/server test harness.
 
 ## Decision log
 
@@ -23,6 +24,7 @@ The phase roadmap (00–07) is complete and the MVP is shippable. Suggested foll
 | 2026-08-15 | Draw mechanism deferred to a future ruleset / online match policy | Accepted | classic-v1 has no automatic draw; online play can lock into infinite loops. A `classic-tournament` variant or server-side move cap will be added in Phase 07. Owner: this project. |
 | 2026-08-15 | Phase 06 local app = web client (Vite, vanilla TS) instead of React Native/iOS | Accepted | Engine is TS shared via RN for iOS per the tooling decision, but iOS RN cannot build/test inside the Linux dev container (no Xcode/simulator). MVP local app shipped as a browser web client using the same engine/session APIs; genuinely two-player and shippable. React Native iOS app is a follow-up once a macOS/iOS build environment is available. Logged as a worked-around blocker below. |
 | 2026-08-15 | Phase 07 transport = HTTP request/response (not WebSocket) for MVP | Accepted | A framework-free `MatchServer` authoritative module + thin `node:http` wrapper. WS real-time transport wraps the same `MatchServer` later; HTTP MVP keeps the failure surface small and is fully testable. |
+| 2026-08-15 | Web UI polish scope: reusable SVG hand assets only, no DOM/CSS animation rigging | Accepted | Most realistic-UI code (DOM layout, CSS transitions, `window`/`document`) won't port to React Native and would be rebuilt. SVG hand assets transfer to RN via `react-native-svg`, so those are a worthwhile investment; animation and layout rigging are deferred to the native app. Lowest-waste path to a nicer-looking web MVP while keeping the real iOS target in view. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -65,12 +67,12 @@ The phase roadmap (00–07) is complete and the MVP is shippable. Suggested foll
 | 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
 | 07 - Online play and release | Complete | `server/matchServer.ts` authoritative service (rooms, turn/move-number/stale-move rejection, illegal-move + ruleset/version compatibility, reconnect/sync, AI auto-play, stale abandonment) + `server/http.ts` JSON API w/ `/health`. 18 server tests incl. HTTP health smoke. `docs/release.md` covers privacy, failure handling, deployment, support, release criteria, planned opt-in metrics. 89 tests total. **MVP shippable — all phases complete.** |
-| — | Follow-ups (non-blocking) | Scheduled | iOS RN app (needs macOS env); persistent room store across restarts (Redis/DB); WebSocket real-time transport wrapping `MatchServer`; tournament draw rule (`classic-tournament-v1`) for ranked online play. |
+| — | Follow-ups (non-blocking) | Scheduled | iOS RN app native build/run (needs full Xcode); persistent room store across restarts (Redis/DB); WebSocket real-time transport wrapping `MatchServer`; tournament draw rule (`classic-tournament-v1`) for ranked online play. |
 
 ## Blockers
 
 - None blocking the MVP. **All phases 00–07 complete.**
-- **Worked around:** React Native / iOS cannot be built or tested inside the Linux dev container (no Xcode, no iOS simulator). Phase 06 local app shipped as a browser web client instead; the iOS RN app is a follow-up requiring a macOS build environment. Owner: this project.
+- **Worked around:** React Native / iOS cannot be built or tested inside the Linux dev container (no Xcode, no iOS simulator). Phase 06 local app shipped as a browser web client instead. The iOS RN app is **scaffolded** (`ios-app/`), typechecks, and is integration-tested against the engine/session layer, but requires **full Xcode** on the host to build/run on a simulator. This machine has only Command Line Tools (`xcrun simctl` unavailable). See `docs/ios-app.md` for the one-command build path once Xcode is installed. Owner: this project.
 - **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
 
 ## Playtest findings (Phase 03)
