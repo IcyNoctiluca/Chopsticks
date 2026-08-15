@@ -19,7 +19,7 @@ Work through the phase files in order. A phase is complete only when its exit cr
 7. [Phase 06 - Local app](PHASES/06-local-app.md)
 8. [Phase 07 - Online play and release](PHASES/07-online-play-and-release.md)
 
-The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md).
+The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md). Release operations are documented in [docs/release.md](docs/release.md).
 
 ## How to run
 

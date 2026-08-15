@@ -20,5 +20,5 @@
     "resolveJsonModule": true,
     "outDir": "dist"
   },
-  "include": ["src", "tests", "ai", "analysis", "session", "vitest.config.ts"]
+  "include": ["src", "tests", "ai", "analysis", "session", "server", "vitest.config.ts"]
 }

@@ -24,7 +24,8 @@
     "clean": "rm -rf dist",
     "play": "tsx cli/main.ts",
     "web": "vite --config web/vite.config.ts",
-    "web:build": "vite build --config web/vite.config.ts"
+    "web:build": "vite build --config web/vite.config.ts",
+    "serve": "tsx server/http.ts"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
