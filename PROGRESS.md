@@ -2,14 +2,14 @@
 
 ## Current state
 
-**Active phase:** Phase 03 - Verification and CLI
+**Active phase:** Phase 04 - Analysis and rules freeze
 
-**Status:** Phase 02 complete; engine built and tested
-**Last updated:** 2026-08-14
+**Status:** Phase 03 complete; comprehensive tests + CLI shipped
+**Last updated:** 2026-08-15
 
 ## Next action
 
-Start Phase 03: strengthen automated coverage (property/randomised tests, full-game enumeration) and build a playable terminal prototype CLI that consumes the engine API only.
+Start Phase 04: enumerate reachable states and legal transitions, identify terminal positions/forced wins/cycles, measure balance, and freeze `classic-v1`.
 
 ## Decision log
 
@@ -56,12 +56,19 @@ Start Phase 03: strengthen automated coverage (property/randomised tests, full-g
 | 00 - Rules decision | Complete | All 9 decisions recorded above; 5 worked positions checked; none postponed. |
 | 01 - Rules specification | Complete | `docs/rules-v0.1.md` written (`classic-v1`, doc v0.1); answers all Phase 00 questions; linked from README; 5 worked examples included. |
 | 02 - Engine foundation | Complete | TS+Vitest engine; `createGame`/`getLegalMoves`/`isLegalMove`/`applyMove`/`getWinner` complete; immutable; zero runtime deps; API + invalid-move contract in `docs/api.md`; 25 tests pass (all rules + worked examples 13.1-13.5). |
-| 03 - Verification and CLI | In progress | Strengthen coverage and build a terminal prototype. |
-| 04 - Analysis and rules freeze | Not started | Enumerate states, assess balance, and freeze v1. |
+| 03 - Verification and CLI | Complete | 36 tests pass (25 engine + 8 invariant/property + 3 CLI smoke). Invariants cover move legality agreement, immutability, terminal rejection, value range, turn ownership, redistribution totals. CLI (`npm run play`) renders state, lists legal moves, accepts selections, handles redistribution and game-over. Playtest via scripted simulation: game completes in 8 moves, B wins. |
+| 04 - Analysis and rules freeze | In progress | Enumerate states, assess balance, and freeze v1. |
 | 05 - Product foundation | Not started | Add history, replay, AI, and session orchestration. |
 | 06 - Local app | Not started | Build the first player-facing interface. |
 | 07 - Online play and release | Not started | Add authoritative multiplayer and polish for release. |
 
 ## Blockers
 
-- None. Phase 00 is complete; Phase 01 has no technical blockers.
+- None. Phases 00-03 complete; Phase 04 has no technical blockers.
+
+## Playtest findings (Phase 03)
+
+- CLI is usable for two-human play: renders both players' hands, active player, lists numbered legal moves, accepts selection by index, supports self-tap and redistribution.
+- Redistributed moves are shown as "Split to R:x L:y"; taps show "Tap [source] -> [target]".
+- Alternating starting player across games works via `createGame({ startingPlayer })`.
+- No rule issues found during scripted playtest; game terminates deterministically.
