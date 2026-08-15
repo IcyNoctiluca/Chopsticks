@@ -30,6 +30,22 @@ Each phase is delivered on its own branch, merged into `main` via a pull request
 
 Never commit directly to `main`. Keep `main` always green and deployable.
 
+## Containerised development
+
+All tooling, dependencies, and environment variables stay inside a Docker container so nothing spills onto the host. Use the dev container for typecheck, tests, builds, and the CLI.
+
+1. **Start the runtime** (once per boot, if not already running): `colima start`.
+2. **Build the dev image** (after dependency or Dockerfile changes): `docker compose build`.
+3. **Start the dev container** in the background: `docker compose up -d`.
+4. **Run commands inside the container** via `docker compose exec dev <cmd>`:
+   - `npm run typecheck`
+   - `npm test`
+   - `npm run build`
+   - `npm run play` (interactive CLI — use `docker compose run --rm -it dev npm run play` for a tty)
+5. **Stop the container** when done: `docker compose down`.
+
+The workspace is bind-mounted, so host edits are reflected live; `node_modules` is kept in a named volume to avoid host/architecture mismatch. Do not run `npm install` or engine commands directly on the host.
+
 ## Engine boundaries
 
 - Keep the engine deterministic, pure where practical, framework-free, and serialisable.
