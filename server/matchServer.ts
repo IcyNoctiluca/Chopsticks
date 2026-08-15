@@ -13,6 +13,7 @@ import {
   type RulesetId,
 } from "../src/index.js";
 import { chooseAIMove } from "../ai/chooseMove.js";
+import type { RoomStore } from "./persistence.js";
 
 export type ClientId = string;
 export type RoomCode = string;
@@ -75,6 +76,7 @@ export interface SubmitMoveResult {
 export interface MatchServerOptions {
   readonly moveTimeoutMs?: number | null;
   readonly abandonedAfterMs?: number;
+  readonly store?: RoomStore;
 }
 
 export class MatchServer {
@@ -82,10 +84,37 @@ export class MatchServer {
   private codeCounter = 0;
   private readonly moveTimeoutMs: number | null;
   private readonly abandonedAfterMs: number;
+  private readonly store: RoomStore | null;
 
   constructor(options: MatchServerOptions = {}) {
     this.moveTimeoutMs = options.moveTimeoutMs ?? null;
     this.abandonedAfterMs = options.abandonedAfterMs ?? 60000;
+    this.store = options.store ?? null;
+    this.hydrate();
+  }
+
+  private hydrate(): void {
+    if (!this.store) return;
+    const loaded = this.store.load();
+    const data = loaded instanceof Promise ? (() => { throw new Error("Async stores are not yet supported"); })() : loaded;
+    for (const [code, room] of Object.entries(data)) {
+      this.rooms.set(code, room);
+    }
+    // Resume the counter above the highest loaded code number.
+    for (const code of this.rooms.keys()) {
+      const n = parseInt(code.replace(/^ROOM-/, ""), 36);
+      if (!Number.isNaN(n)) this.codeCounter = Math.max(this.codeCounter, n);
+    }
+  }
+
+  private persist(roomCode: RoomCode): void {
+    if (!this.store) return;
+    const room = this.rooms.get(roomCode);
+    if (room) {
+      this.store.save(roomCode, room);
+    } else {
+      this.store.remove(roomCode);
+    }
   }
 
   createRoom(host: { clientId: ClientId; displayName: string; isAI?: boolean; aiDifficulty?: "random" | "heuristic" | "solved" }, options: { rulesetId?: RulesetId; moveTimeoutMs?: number } = {}): { roomCode: RoomCode; playerId: PlayerId; state: GameState } {
@@ -114,6 +143,7 @@ export class MatchServer {
       history: [],
     };
     this.rooms.set(roomCode, room);
+    this.persist(roomCode);
     if (isAI) this.maybeAutoPlayAI(roomCode);
     return { roomCode, playerId: "A", state: replay(room.record) };
   }
@@ -130,6 +160,7 @@ export class MatchServer {
       lastActivityAt: Date.now(),
     };
     this.rooms.set(roomCode, updated);
+    this.persist(roomCode);
     return { playerId: "B", state: replay(updated.record), history: [...updated.history] };
   }
 
@@ -143,6 +174,7 @@ export class MatchServer {
       lastActivityAt: Date.now(),
     };
     this.rooms.set(roomCode, updated);
+    this.persist(roomCode);
     this.maybeAutoPlayAI(roomCode);
     return { playerId: "B" };
   }
@@ -178,6 +210,7 @@ export class MatchServer {
       lastActivityAt: Date.now(),
     };
     this.rooms.set(roomCode, updated);
+    this.persist(roomCode);
     this.maybeAutoPlayAI(roomCode);
     return { state: nextState, moveNumber: updated.expectedMoveNumber, winner, accepted: true };
   }
@@ -201,6 +234,7 @@ export class MatchServer {
     if (room.phase !== "playing") return false;
     if (now - room.lastActivityAt >= this.abandonedAfterMs) {
       this.rooms.set(roomCode, { ...room, phase: "abandoned", lastActivityAt: now });
+      this.persist(roomCode);
       return true;
     }
     return false;
@@ -246,6 +280,7 @@ export class MatchServer {
         phase: winner !== null ? "finished" : "playing",
         lastActivityAt: Date.now(),
       });
+      this.persist(roomCode);
       if (winner !== null) return;
     }
   }

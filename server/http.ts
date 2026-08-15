@@ -2,8 +2,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { MatchServer, type ClientId, type RoomCode } from "./matchServer.js";
 import type { Move } from "../src/index.js";
 import { ChopsticksWSServer } from "./ws.js";
+import { FileRoomStore } from "./persistence.js";
 
-const server = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 5 * 60_000 });
+const ROOM_STORE_PATH = process.env.ROOM_STORE_PATH ?? "data/rooms.json";
+const store = new FileRoomStore({ path: ROOM_STORE_PATH });
+const server = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 5 * 60_000, store });
 const httpServer = createServer(handleRequest);
 const wsServer = new ChopsticksWSServer({ server: httpServer, matchServer: server });
 const PORT = Number(process.env.PORT ?? 3000);
