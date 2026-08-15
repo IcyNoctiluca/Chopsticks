@@ -9,6 +9,8 @@
 #   docker compose exec dev npm test
 #   docker compose exec dev npm run build
 #   docker compose exec dev npm run play     # CLI (needs a tty: use -i a llocate-tty via `docker compose run --rm -it dev npm run play`)
+#   docker compose exec dev npm run web      # web app at http://localhost:5173 (stays foreground; use -d on `exec` to background it)
+#   docker compose exec dev npm run serve    # match server at http://localhost:3000
 #   docker compose down          # stop and remove the container
 
 services:
@@ -17,6 +19,12 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: chopsticks-dev
+    # Publish ports so host browsers/clients can reach the dev container:
+    # 5173 = Vite web dev server (npm run web)
+    # 3000 = authoritative match server (npm run serve)
+    ports:
+      - "5173:5173"
+      - "3000:3000"
     # Bind-mount the workspace so host edits are reflected live, while
     # node_modules stays inside the container (overlaid via anonymous volume)
     # to avoid host/architecture mismatch.
