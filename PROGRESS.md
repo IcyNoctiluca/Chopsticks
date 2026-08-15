@@ -2,15 +2,15 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap polish — minimal web UI, then iOS setup
+**Active phase:** Post-roadmap — iOS native shell complete
 
-**Status:** All phases 00–07 complete (MVP shippable). Starting post-roadmap work: minimal web UI polish with reusable SVG hand assets, then setting up the React Native iOS build environment.
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. The React Native iOS native shell now builds, launches, and renders on the iOS Simulator using the shared engine/session code. Verified on iPhone 17 Pro (iOS 26.5).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-1. **Minimal web polish** — replace plain number displays with reusable SVG hand assets (fingers raised = hand value). These assets are portable to React Native (`react-native-svg`) so the visual investment is not wasted. No DOM/CSS animation rigging — that won't port to RN and will be rebuilt natively.
-2. **iOS React Native setup** — set up the RN app against a macOS/iOS build environment so the real native UI can be built. The web client stops receiving new UI work after polish; it remains the shippable MVP and the engine/session/server test harness.
+1. **Review and merge the iOS native shell PR** (`ios-native-shell`) — the simulator build is verified, the app renders with SVG hands, legal moves, AI opponent toggle, rules modal, undo/new-game/new-match controls, and safe-area layout. All tests pass (92/92).
+2. **Follow-up (non-blocking):** native animations, haptics, and deeper accessibility polish can be added in a later post-MVP pass.
 
 ## Decision log
 
@@ -72,7 +72,7 @@
 ## Blockers
 
 - None blocking the MVP. **All phases 00–07 complete.**
-- **Worked around:** React Native / iOS cannot be built or tested inside the Linux dev container (no Xcode, no iOS simulator). Phase 06 local app shipped as a browser web client instead. The iOS RN app is **scaffolded** (`ios-app/`), typechecks, and is integration-tested against the engine/session layer, but requires **full Xcode** on the host to build/run on a simulator. This machine has only Command Line Tools (`xcrun simctl` unavailable). See `docs/ios-app.md` for the one-command build path once Xcode is installed. Owner: this project.
+- **Resolved:** iOS React Native native shell now builds and runs on the iOS Simulator. Two Metro wiring fixes were required: (1) map TypeScript `.js` extension imports to `.ts`/`.tsx` for the shared engine/session/ai code; (2) ensure npm package resolution prefers `ios-native/node_modules` so the workspace root's dev-only `react-native` copy does not shadow the shell's runtime dependencies. See `ios-native/metro.config.js`.
 - **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
 
 ## Playtest findings (Phase 03)
