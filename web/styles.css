@@ -86,8 +86,25 @@ h1 {
 
 .hand .value {
   display: block;
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 700;
+}
+
+.hand .hand-art {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 6px 0 2px;
+  min-height: 56px;
+}
+
+.hand .hand-art svg {
+  display: block;
+}
+
+/* B's hands mirrored so both players' hands face the centre */
+.player[data-player="B"] .hand .hand-art {
+  transform: scaleY(-1);
 }
 
 .hand.dead {
