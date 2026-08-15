@@ -2,6 +2,8 @@
 
 **Depends on:** Phase 02
 
+**Status:** Complete
+
 **Outcome:** A trustworthy engine and a cheap, playable two-human prototype.
 
 ## Work

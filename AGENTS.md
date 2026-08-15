@@ -15,6 +15,37 @@
 4. Add tests alongside every engine rule or bug fix.
 5. Run the relevant checks before declaring a phase item complete.
 
+## Git workflow (per phase)
+
+Each phase is delivered on its own branch, merged into `main` via a pull request, then cleaned up before the next phase begins.
+
+1. **Branch from `main`.** Ensure local `main` is up to date first (`git switch main && git pull --ff-only origin main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
+2. **Work on the branch.** Commit focused, conventional commits there. Run lint, typecheck (`npm run typecheck`), and tests (`npm test`) before considering the phase complete.
+3. **Push the branch.** `git push -u origin <branch>`.
+4. **Open a PR to `main`.** Use `gh pr create --base main --head <branch>` with a summary of the phase work, evidence of meeting the exit criteria, and a request to delete the branch after merge.
+5. **Merge the PR.** Merge on GitHub (or via `gh pr merge`).
+6. **Delete the branches.** Delete the local and remote phase branches: `git push origin --delete <branch>` then `git branch -d <branch>`.
+7. **Pull the latest `main`.** `git switch main && git pull --ff-only origin main`.
+8. **Repeat from step 1** for the next phase, branching off the updated `main`.
+
+Never commit directly to `main`. Keep `main` always green and deployable.
+
+## Containerised development
+
+All tooling, dependencies, and environment variables stay inside a Docker container so nothing spills onto the host. Use the dev container for typecheck, tests, builds, and the CLI.
+
+1. **Start the runtime** (once per boot, if not already running): `colima start`.
+2. **Build the dev image** (after dependency or Dockerfile changes): `docker compose build`.
+3. **Start the dev container** in the background: `docker compose up -d`.
+4. **Run commands inside the container** via `docker compose exec dev <cmd>`:
+   - `npm run typecheck`
+   - `npm test`
+   - `npm run build`
+   - `npm run play` (interactive CLI — use `docker compose run --rm -it dev npm run play` for a tty)
+5. **Stop the container** when done: `docker compose down`.
+
+The workspace is bind-mounted, so host edits are reflected live; `node_modules` is kept in a named volume to avoid host/architecture mismatch. Do not run `npm install` or engine commands directly on the host.
+
 ## Engine boundaries
 
 - Keep the engine deterministic, pure where practical, framework-free, and serialisable.
