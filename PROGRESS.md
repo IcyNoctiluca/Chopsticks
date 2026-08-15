@@ -2,14 +2,14 @@
 
 ## Current state
 
-**Active phase:** Phase 04 - Analysis and rules freeze
+**Active phase:** Phase 05 - Product foundation
 
-**Status:** Phase 03 complete; comprehensive tests + CLI shipped
+**Status:** Phase 04 complete; classic-v1 frozen (v1.0, engine 0.1.0)
 **Last updated:** 2026-08-15
 
 ## Next action
 
-Start Phase 04: enumerate reachable states and legal transitions, identify terminal positions/forced wins/cycles, measure balance, and freeze `classic-v1`.
+Start Phase 05: add `GameRecord` (initial state + move history), deterministic replay, explicit undo policy, AI opponents (random then heuristic), and a session layer for local saves/settings.
 
 ## Decision log
 
@@ -19,6 +19,8 @@ Start Phase 04: enumerate reachable states and legal transitions, identify termi
 | 2026-08-14 | Initial ruleset choices | Accepted | All nine Phase 00 questions answered; none postponed. See "Ruleset decisions (Phase 00)" below. |
 | 2026-08-14 | Ruleset specification `classic-v1` (doc v0.1) | Accepted | `docs/rules-v0.1.md` answers all Phase 00 questions; linked from README. Draft pending freeze in Phase 04. |
 | 2026-08-14 | Engine tooling: TypeScript + Vitest, shared via React Native for iOS | Accepted | One engine across web/server/CLI/iOS; matches DESIGN.md single-engine rule. Zero runtime deps. |
+| 2026-08-15 | Freeze `classic-v1` at doc v1.0, engine 0.1.0 | Accepted | Phase 04 retrograde analysis (`docs/analysis.md`): opening value DRAW, no first-player advantage, 1142 reachable states. Behaviour unchanged from v0.1 draft. No draw rule; cycles allowed (Phase 00 decision 8). |
+| 2026-08-15 | Draw mechanism deferred to a future ruleset / online match policy | Accepted | classic-v1 has no automatic draw; online play can lock into infinite loops. A `classic-tournament` variant or server-side move cap will be added in Phase 07. Owner: this project. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -57,8 +59,8 @@ Start Phase 04: enumerate reachable states and legal transitions, identify termi
 | 01 - Rules specification | Complete | `docs/rules-v0.1.md` written (`classic-v1`, doc v0.1); answers all Phase 00 questions; linked from README; 5 worked examples included. |
 | 02 - Engine foundation | Complete | TS+Vitest engine; `createGame`/`getLegalMoves`/`isLegalMove`/`applyMove`/`getWinner` complete; immutable; zero runtime deps; API + invalid-move contract in `docs/api.md`; 25 tests pass (all rules + worked examples 13.1-13.5). |
 | 03 - Verification and CLI | Complete | 36 tests pass (25 engine + 8 invariant/property + 3 CLI smoke). Invariants cover move legality agreement, immutability, terminal rejection, value range, turn ownership, redistribution totals. CLI (`npm run play`) renders state, lists legal moves, accepts selections, handles redistribution and game-over. Playtest via scripted simulation: game completes in 8 moves, B wins. |
-| 04 - Analysis and rules freeze | In progress | Enumerate states, assess balance, and freeze v1. |
-| 05 - Product foundation | Not started | Add history, replay, AI, and session orchestration. |
+| 04 - Analysis and rules freeze | Complete | `analysis/enumerate.ts` + `docs/analysis.md`: 1142 reachable states, opening value DRAW, no first-player advantage, 510 WIN / 136 LOSS / 496 DRAW states, min 5 / max-shortest 8 moves. `classic-v1` frozen at doc v1.0, engine 0.1.0. Analysis regression test in `tests/analysis.test.ts`. |
+| 05 - Product foundation | In progress | Add history, replay, AI, and session orchestration. |
 | 06 - Local app | Not started | Build the first player-facing interface. |
 | 07 - Online play and release | Not started | Add authoritative multiplayer and polish for release. |
 
