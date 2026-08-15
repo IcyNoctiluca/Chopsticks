@@ -2,15 +2,19 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — iOS native shell complete
+**Active phase:** Post-roadmap — iOS native shell merged; choosing next follow-up
 
-**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. The React Native iOS native shell now builds, launches, and renders on the iOS Simulator using the shared engine/session code. Verified on iPhone 17 Pro (iOS 26.5).
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. The React Native iOS native shell merged in PR #8 and now builds, launches, and renders on the iOS Simulator. Verified on iPhone 17 Pro (iOS 26.5).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-1. **Review and merge the iOS native shell PR** (`ios-native-shell`) — the simulator build is verified, the app renders with SVG hands, legal moves, AI opponent toggle, rules modal, undo/new-game/new-match controls, and safe-area layout. All tests pass (92/92).
-2. **Follow-up (non-blocking):** native animations, haptics, and deeper accessibility polish can be added in a later post-MVP pass.
+Choose and start the next post-MVP follow-up. Candidates (in rough impact order):
+
+1. **WebSocket real-time transport** wrapping `MatchServer` — replaces HTTP request/response polling for online play.
+2. **Persistent room store** across server restarts (Redis/DB) — required for production online play.
+3. **Tournament draw rule** (`classic-tournament-v1`) — prevents infinite loops in ranked online play.
+4. **Native iOS polish** — animations, haptics, deeper accessibility refinements.
 
 ## Decision log
 
