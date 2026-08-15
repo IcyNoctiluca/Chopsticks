@@ -2,19 +2,15 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — iOS native shell merged; choosing next follow-up
+**Active phase:** Post-roadmap — WebSocket real-time transport in progress
 
-**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. The React Native iOS native shell merged in PR #8 and now builds, launches, and renders on the iOS Simulator. Verified on iPhone 17 Pro (iOS 26.5).
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7; iOS native shell merged in PR #8. A WebSocket transport wrapping `MatchServer` is implemented on branch `phase-08-websocket-transport` and provides real-time room state broadcasts. Tests pass (96/96).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-Choose and start the next post-MVP follow-up. Candidates (in rough impact order):
-
-1. **WebSocket real-time transport** wrapping `MatchServer` — replaces HTTP request/response polling for online play.
-2. **Persistent room store** across server restarts (Redis/DB) — required for production online play.
-3. **Tournament draw rule** (`classic-tournament-v1`) — prevents infinite loops in ranked online play.
-4. **Native iOS polish** — animations, haptics, deeper accessibility refinements.
+1. **Complete and merge the WebSocket transport PR** — review `server/ws.ts`, ensure message protocol is documented, and merge.
+2. **Choose the next follow-up:** persistent room store, tournament draw rule, or native iOS polish.
 
 ## Decision log
 
