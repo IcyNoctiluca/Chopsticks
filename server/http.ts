@@ -1,9 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { MatchServer, type ClientId, type RoomCode } from "./matchServer.js";
 import type { Move } from "../src/index.js";
+import { ChopsticksWSServer } from "./ws.js";
 
 const server = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 5 * 60_000 });
 const httpServer = createServer(handleRequest);
+const wsServer = new ChopsticksWSServer({ server: httpServer, matchServer: server });
 const PORT = Number(process.env.PORT ?? 3000);
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -107,4 +109,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { httpServer, server };
+export { httpServer, server, wsServer };
