@@ -6,15 +6,17 @@ This document covers privacy, failure handling, deployment, support expectations
 
 ```
 Client (web app / iOS RN) ── intended move ──> Match Server ──> Engine (only authority)
-       ^                                     validates turn + version + legality
+       ^        (HTTP or WebSocket)          validates turn + version + legality
        └────── authoritative state ────────── applies via engine, broadcasts state
 ```
 
 The server is the single authority. Clients submit intended moves; the server loads authoritative state, checks the expected turn/move-number, validates and applies the move through the engine, then returns/broadcasts the resulting state. Clients never compute authoritative outcomes. The engine is unchanged from Phase 02 and is consumed verbatim by the server (`server/matchServer.ts`).
 
-## API (HTTP MVP)
+## API
 
-`server/http.ts` exposes a small JSON API over `node:http`:
+`server/http.ts` exposes a small JSON API over `node:http` and a WebSocket endpoint at `/ws` for real-time play.
+
+### HTTP endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -24,6 +26,31 @@ The server is the single authority. Clients submit intended moves; the server lo
 | POST | `/rooms/{code}/ai` | Add an AI opponent as player B |
 | POST | `/rooms/{code}/move` | Submit an intended move (authoritative validation) |
 | GET | `/rooms/{code}/sync?clientId=...` | Reconnect: fetch authoritative state + history + expected turn/move number |
+
+### WebSocket messages
+
+Connect to `ws://host:port/ws`. All messages are JSON.
+
+Client → server:
+
+| Type | Fields | Purpose |
+| --- | --- | --- |
+| `create` | `clientId`, `displayName`, optional `rulesetId`, `moveTimeoutMs`, `isAI`, `aiDifficulty` | Create a room |
+| `join` | `roomCode`, `clientId`, `displayName` | Join a room as player B |
+| `add-ai` | `roomCode`, optional `difficulty` | Add an AI opponent as player B |
+| `move` | `roomCode`, `clientId`, `move`, `expectedMoveNumber` | Submit an intended move |
+| `sync` | `roomCode`, `clientId` | Fetch current authoritative state |
+
+Server → client:
+
+| Type | Notes |
+| --- | --- |
+| `created` | `roomCode`, `playerId`, `state` |
+| `joined` | `roomCode`, `playerId`, `state`, `history` |
+| `ai-added` | `roomCode`, `playerId` |
+| `move-accepted` | `roomCode`, `state`, `moveNumber`, `winner` |
+| `state` | Broadcast to all room participants after any change |
+| `error` | `code` matches `MatchServerError` codes (`illegal-move`, `stale-move`, etc.) |
 
 Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
 
