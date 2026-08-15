@@ -2,14 +2,15 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — iOS native shell (in progress, handed off)
+**Active phase:** Post-roadmap — iOS native shell complete
 
-**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. iOS React Native native shell **wired and committed on branch `ios-native-shell`** but the first `npx react-native run-ios` build was not completed before the work was moved to a more capable machine. Full handoff at `docs/handoff.md`.
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. The React Native iOS native shell now builds, launches, and renders on the iOS Simulator using the shared engine/session code. Verified on iPhone 17 Pro (iOS 26.5).
 **Last updated:** 2026-08-15
 
 ## Next action
 
-Resume the iOS native build on the new machine using `docs/handoff.md` → §5.4. The exact resume command is `npx react-native run-ios --simulator="iPhone 17 Pro"` from `ios-native/` after `npm install` + `pod install` and a booted simulator. Once it renders, iterate on the native UI (animations, accessibility, Phase 06 polish).
+1. **Polish the native client** — add rules/info affordance, optional AI opponent for Player B, and accessibility/layout refinements so the iOS app matches the Phase 06 local-app exit criteria.
+2. **Merge the iOS native shell PR** (`ios-native-shell`) once the native build is verified and documented.
 
 ## Decision log
 
@@ -71,8 +72,7 @@ Resume the iOS native build on the new machine using `docs/handoff.md` → §5.4
 ## Blockers
 
 - None blocking the MVP. **All phases 00–07 complete.**
-- **In progress (handed off):** iOS React Native native shell is wired and committed on `ios-native-shell` but the first simulator build was not completed before moving to a more capable machine. Resume per `docs/handoff.md` → §5.4. No workarounds required on a macOS machine with full Xcode + iOS Simulator runtime installed.
-- **Previously worked around (now resolved on this machine):** Full Xcode (26.6) and the iOS 26.5 Simulator runtime (8.5 GB) were installed; simulator devices recreated and booted. See `docs/handoff.md` → §4 for the gotchas encountered (duplicate runtime entries, `simctl delete unavailable`, `pod install` vs `bundle exec pod install`).
+- **Resolved:** iOS React Native native shell now builds and runs on the iOS Simulator. Two Metro wiring fixes were required: (1) map TypeScript `.js` extension imports to `.ts`/`.tsx` for the shared engine/session/ai code; (2) ensure npm package resolution prefers `ios-native/node_modules` so the workspace root's dev-only `react-native` copy does not shadow the shell's runtime dependencies. See `ios-native/metro.config.js`.
 - **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
 
 ## Playtest findings (Phase 03)

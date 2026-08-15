@@ -4,9 +4,9 @@ The iOS app is the target native client for Chopsticks, built on **the same** `@
 
 ## Status
 
-**Scaffolded, typechecks, not yet built/run on a simulator.**
+**Builds and runs on the iOS Simulator.**
 
-The app code (`ios-app/App.tsx`, `GameScreen.tsx`, `HandSVG.tsx`) is complete and consumes the shared engine/session layer. It cannot be built or run for iOS from this machine because **full Xcode is not installed** (only the Command Line Tools are present — `xcrun simctl` is unavailable). This is logged as a blocker in `PROGRESS.md`.
+The app code (`ios-app/App.tsx`, `GameScreen.tsx`, `HandSVG.tsx`) is complete and consumes the shared engine/session layer. It has been verified on an iPhone 17 Pro simulator (iOS 26.5).
 
 ## What's portable from the web MVP
 
@@ -17,28 +17,34 @@ The app code (`ios-app/App.tsx`, `GameScreen.tsx`, `HandSVG.tsx`) is complete an
 
 What is **not** ported: DOM layout, CSS, `window`/`document`. The iOS app uses `<View>`/`StyleSheet` natively. See `DESIGN.md` → "Client portability".
 
-## To build and run (once Xcode is installed)
+## To build and run
 
-1. **Install full Xcode** from the Mac App Store (one-time, ~7–12 GB). Then:
+1. **Install full Xcode** from the Mac App Store (one-time, ~7–12 GB), select it, and accept the license:
    ```sh
    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
    sudo xcodebuild -runFirstLaunch
+   sudo xcodebuild -license accept
    xcrun simctl list devices available   # confirm a simulator exists
    ```
-2. **Create a native RN project shell** that points at this app. The recommended path is to use the React Native Community CLI outside the container (the container has no Xcode):
+   If no iOS Simulator runtime is listed, run `xcodebuild -downloadPlatform iOS` (~8.5 GB).
+2. **Install host tooling:** Node 22+ (`brew install node`) and CocoaPods (`brew install cocoapods`).
+3. **Install JS and iOS dependencies:**
    ```sh
-   npx @react-native-community/cli@latest init Chopsticks --directory ios-native \
-     --skip-install
+   cd ios-native
+   npm install
+   cd ios
+   pod install          # NOT `bundle exec pod install`
+   cd ..
    ```
-   Then wire `ios-app/App.tsx` as the bundle entry (Metro `entryFile`) and install the shared engine/session packages. A minimal `metro.config.js` that resolves `../src` and `../session` as source roots is required.
-3. **Install `react-native-svg`** in the native project (it's already a devDependency here for typecheck).
-4. **Run the app:**
+4. **Boot a simulator and run the app:**
    ```sh
-   npx react-native run-ios
+   xcrun simctl boot "iPhone 17 Pro"
+   open -a Simulator
+   npx react-native run-ios --simulator="iPhone 17 Pro"
    ```
-   This launches the iOS Simulator, builds the native shell, loads the JS bundle via Metro, and renders `App`.
+   The first build takes several minutes. The app launches in the simulator using the shared engine/session code from `../src` and `../session`.
 
-Until full Xcode is installed, the iOS app is verified by **typecheck** (`npx tsc --noEmit -p ios-app/tsconfig.json`) and the **engine/session integration tests** (`tests/ios-app.test.ts`) — these prove the logic layer the UI renders is correct, even though the native render path is unexercised.
+The iOS app is also verified by **typecheck** (`npx tsc --noEmit -p ios-app/tsconfig.json` from `ios-native/`) and the **engine/session integration tests** (`tests/ios-app.test.ts`).
 
 ## Why the iOS work is staged this way
 

@@ -1,10 +1,12 @@
-# Handoff — iOS native shell in progress
+# Handoff — iOS native shell (completed)
 
-This document is a clean handoff for an agent picking up the Chopsticks project on a different machine. It records exactly where the work stopped, what's verified working, what's uncommitted, and the precise next steps.
+> **Status:** The handoff is complete. The iOS native shell now builds, launches, and renders on the iOS Simulator. This document is preserved as a record of the setup steps and gotchas encountered along the way. For the current build instructions, see `docs/ios-app.md`.
+
+This document was a clean handoff for an agent picking up the Chopsticks project on a different machine. It records where the work stopped, what was verified working, and the precise next steps.
 
 **Last updated:** 2026-08-15
 **Last commit on `main`:** `6f1b637` (Merge PR #7)
-**Active branch:** `ios-native-shell` (uncommitted + unpushed at time of writing — see below)
+**Active branch:** `ios-native-shell`
 
 ---
 
@@ -49,8 +51,9 @@ A full `npx @react-native-community/cli init` scaffold that has been modified to
 - `ios-native/ios/Podfile.lock` — `pod install` completed (87 pods installed), so `react-native-svg` native pod is wired.
 - **The embedded `.git` directory that `npx react-native init` creates inside `ios-native/` has been removed** so the project tracks as plain files in the parent repo. If you re-init a fresh RN scaffold, remove `ios-native/.git` again before committing.
 
-**Not yet done on this branch:**
-- Successfully run `npx react-native run-ios` end-to-end. The build was started but aborted by the user before completion (the machine was being moved). See §5 for the exact resume command.
+**Completed on this branch:**
+- `npx react-native run-ios --simulator="iPhone 17 Pro"` now succeeds end-to-end. The app renders the Chopsticks game UI in the simulator using the shared engine/session code.
+- Two Metro wiring fixes were required beyond the original handoff; see §5.5.
 
 ## 4. iOS / Xcode / Simulator setup
 
@@ -135,9 +138,18 @@ open -a Simulator
 cd ios-native
 npx react-native run-ios --simulator="iPhone 17 Pro"
 ```
-This is the exact command that was **aborted** at handoff. Run it to completion; expect a first build of several minutes (Hermes compile + Xcode build). On success the Chopsticks app renders in the simulator using the shared engine/session code from `../src` and `../session`.
+This command now completes successfully; expect a first build of several minutes (Hermes compile + Xcode build). On success the Chopsticks app renders in the simulator using the shared engine/session code from `../src` and `../session`.
 
-### 5.5 Start Metro separately if needed
+### 5.5 Metro wiring fixes applied after the handoff
+
+The first successful simulator build required two changes to `ios-native/metro.config.js`:
+
+1. **TypeScript `.js` extension imports.** The shared engine/session/ai code uses Node16/Bundler style imports with explicit `.js` extensions (e.g. `./applyMove.js`). Metro does not map these to `.ts`/`.tsx` by default, so `resolveRequest` tries `.ts`, then `.tsx`, then `.js`.
+2. **Prefer `ios-native/node_modules` for package imports.** Because `ios-app/` lives outside `ios-native/`, Metro resolved `react-native` from the workspace root's `node_modules`. The root dev dependency is a different RN version than the shell runtime, which broke asset resolution. The custom resolver now pretends package requests originate inside `ios-native/` so the shell's dependencies win.
+
+These fixes are committed on `ios-native-shell`; no local workaround is needed.
+
+### 5.6 Start Metro separately if needed
 `run-ios` starts Metro automatically. If it complains about a terminal, run `npm start` in one terminal then `npx react-native run-ios --no-packager` in another.
 
 ## 6. How the native app reuses the shared engine
