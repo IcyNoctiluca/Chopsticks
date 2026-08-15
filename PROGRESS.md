@@ -2,15 +2,14 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap polish — minimal web UI, then iOS setup
+**Active phase:** Post-roadmap — iOS native shell (in progress, handed off)
 
-**Status:** All phases 00–07 complete (MVP shippable). Starting post-roadmap work: minimal web UI polish with reusable SVG hand assets, then setting up the React Native iOS build environment.
+**Status:** All phases 00–07 complete (MVP shippable). Web polish merged in PR #7. iOS React Native native shell **wired and committed on branch `ios-native-shell`** but the first `npx react-native run-ios` build was not completed before the work was moved to a more capable machine. Full handoff at `docs/handoff.md`.
 **Last updated:** 2026-08-15
 
 ## Next action
 
-1. **Minimal web polish** — replace plain number displays with reusable SVG hand assets (fingers raised = hand value). These assets are portable to React Native (`react-native-svg`) so the visual investment is not wasted. No DOM/CSS animation rigging — that won't port to RN and will be rebuilt natively.
-2. **iOS React Native setup** — set up the RN app against a macOS/iOS build environment so the real native UI can be built. The web client stops receiving new UI work after polish; it remains the shippable MVP and the engine/session/server test harness.
+Resume the iOS native build on the new machine using `docs/handoff.md` → §5.4. The exact resume command is `npx react-native run-ios --simulator="iPhone 17 Pro"` from `ios-native/` after `npm install` + `pod install` and a booted simulator. Once it renders, iterate on the native UI (animations, accessibility, Phase 06 polish).
 
 ## Decision log
 
@@ -72,7 +71,8 @@
 ## Blockers
 
 - None blocking the MVP. **All phases 00–07 complete.**
-- **Worked around:** React Native / iOS cannot be built or tested inside the Linux dev container (no Xcode, no iOS simulator). Phase 06 local app shipped as a browser web client instead. The iOS RN app is **scaffolded** (`ios-app/`), typechecks, and is integration-tested against the engine/session layer, but requires **full Xcode** on the host to build/run on a simulator. This machine has only Command Line Tools (`xcrun simctl` unavailable). See `docs/ios-app.md` for the one-command build path once Xcode is installed. Owner: this project.
+- **In progress (handed off):** iOS React Native native shell is wired and committed on `ios-native-shell` but the first simulator build was not completed before moving to a more capable machine. Resume per `docs/handoff.md` → §5.4. No workarounds required on a macOS machine with full Xcode + iOS Simulator runtime installed.
+- **Previously worked around (now resolved on this machine):** Full Xcode (26.6) and the iOS 26.5 Simulator runtime (8.5 GB) were installed; simulator devices recreated and booted. See `docs/handoff.md` → §4 for the gotchas encountered (duplicate runtime entries, `simctl delete unavailable`, `pod install` vs `bundle exec pod install`).
 - **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
 
 ## Playtest findings (Phase 03)

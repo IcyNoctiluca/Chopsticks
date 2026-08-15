@@ -19,7 +19,7 @@ Work through the phase files in order. A phase is complete only when its exit cr
 7. [Phase 06 - Local app](PHASES/06-local-app.md)
 8. [Phase 07 - Online play and release](PHASES/07-online-play-and-release.md)
 
-The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md). Release operations are documented in [docs/release.md](docs/release.md). The iOS React Native app is documented in [docs/ios-app.md](docs/ios-app.md).
+The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md). Release operations are documented in [docs/release.md](docs/release.md). The iOS React Native app is documented in [docs/ios-app.md](docs/ios-app.md). Active handoff state is in [docs/handoff.md](docs/handoff.md).
 
 ## How to run
 
