@@ -4,9 +4,9 @@ The iOS app is the target native client for Chopsticks, built on **the same** `@
 
 ## Status
 
-**Builds and runs on the iOS Simulator.**
+**Builds and runs on the iOS Simulator as a playable local client.**
 
-The app code (`ios-app/App.tsx`, `GameScreen.tsx`, `HandSVG.tsx`) is complete and consumes the shared engine/session layer. It has been verified on an iPhone 17 Pro simulator (iOS 26.5).
+The app code (`ios-app/App.tsx`, `GameScreen.tsx`, `HandSVG.tsx`) consumes the shared engine/session layer and provides two-player local play, an optional AI opponent for Player B, undo, new game/new match, a rules modal, and reusable SVG hand assets. Verified on an iPhone 17 Pro simulator (iOS 26.5).
 
 ## What's portable from the web MVP
 

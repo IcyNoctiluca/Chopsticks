@@ -9,8 +9,8 @@
 
 ## Next action
 
-1. **Polish the native client** — add rules/info affordance, optional AI opponent for Player B, and accessibility/layout refinements so the iOS app matches the Phase 06 local-app exit criteria.
-2. **Merge the iOS native shell PR** (`ios-native-shell`) once the native build is verified and documented.
+1. **Review and merge the iOS native shell PR** (`ios-native-shell`) — the simulator build is verified, the app renders with SVG hands, legal moves, AI opponent toggle, rules modal, undo/new-game/new-match controls, and safe-area layout. All tests pass (92/92).
+2. **Follow-up (non-blocking):** native animations, haptics, and deeper accessibility polish can be added in a later post-MVP pass.
 
 ## Decision log
 
