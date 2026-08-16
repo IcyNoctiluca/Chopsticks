@@ -172,9 +172,24 @@ class OnlineClient {
     document.getElementById("lobby")?.setAttribute("hidden", "");
     document.getElementById("game")?.removeAttribute("hidden");
     document.getElementById("btn-add-ai")?.removeAttribute("hidden");
+    const codeDisplay = document.getElementById("room-code-display");
+    if (codeDisplay && this.roomCode) {
+      codeDisplay.textContent = `Room: ${this.roomCode}`;
+    }
+    const copyBtn = document.getElementById("btn-copy-code");
+    copyBtn?.removeEventListener("click", this.copyCode);
+    copyBtn?.addEventListener("click", this.copyCode);
     document.getElementById("btn-leave")?.removeEventListener("click", this.leave);
     document.getElementById("btn-leave")?.addEventListener("click", this.leave);
   }
+
+  private copyCode = (): void => {
+    if (!this.roomCode) return;
+    navigator.clipboard.writeText(this.roomCode).then(
+      () => this.setStatus("Room code copied!"),
+      () => this.setStatus("Failed to copy room code"),
+    );
+  };
 
   private leave = (): void => {
     this.ws?.close();

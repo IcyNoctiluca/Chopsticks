@@ -2,15 +2,15 @@
 
 ## Current state
 
-**Active phase:** MVP shippable
+**Active phase:** Production hardening
 
-**Status:** All stabilization, release-engineering, online-client, and tournament-ruleset work is merged. The MVP is shippable: the engine is frozen (`classic-v1` and `classic-tournament-v1`), local and online web clients consume it, the authoritative server persists rooms, a production Docker image builds, and CI runs on every PR. Remaining non-blocking follow-ups: automated iOS runtime test, production-grade shared room store, and broader hardening.
+**Status:** Production-hardening work is in progress on `phase-14-production-hardening`. Added HTTP request-body size limits, per-IP rate limiting, room TTL cleanup for finished/abandoned rooms, and room-code display/copy in the online client. The app remains shippable; these changes make it safer to expose to the public internet. Remaining non-blocking follow-ups: automated iOS runtime test and production-grade shared room store.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-1. Mark the MVP shippable in docs and merge this final documentation update.
-2. Choose follow-up work based on product priority: native iOS runtime test, shared room store for horizontal scaling, rate limiting/abuse protection, or additional client polish.
+1. Update docs/progress and merge the production-hardening branch.
+2. Decide whether to continue with remaining follow-ups (iOS runtime test, shared store) or consider the implementation complete.
 
 ## Decision log
 
@@ -34,6 +34,7 @@
 | 2026-08-16 | Release engineering: CI | Accepted | `.github/workflows/ci.yml` runs typecheck, tests, engine/server/web builds, iOS-app typecheck, and a Docker production-image smoke test on pushes/PRs to `main`. |
 | 2026-08-16 | Online web client | Accepted | A separate `web/online.html` + `web/online.ts` uses WebSocket to consume the server protocol. It reuses hand SVG/styles, supports create/join/add-ai/move, and auto-reconnects. The Vite build produces both `index.html` and `online.html` entries. |
 | 2026-08-16 | Tournament ruleset `classic-tournament-v1` | Accepted | Separate ruleset from frozen `classic-v1`; adds threefold-repetition draw, half-point match scoring, and is selectable in online play. Implemented in `src/result.ts`; server and online client support it. |
+| 2026-08-16 | Production hardening | Accepted | Add `MAX_BODY_BYTES`, per-IP rate limiting (`RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX`), `ROOM_TTL_MS` cleanup of finished/abandoned rooms, and room-code copy in the online client. All configurable via environment variables. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -80,7 +81,8 @@
 | — | Release engineering | Complete | Merged via PR #16. Compiled server artifact, production Dockerfile, stale-room sweeps, GitHub Actions CI. |
 | — | Online client | Complete | Merged via PR #17. web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. |
 | — | Tournament ruleset | Complete | Merged via PR #18. Adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. |
-| — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 122 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
+| — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 128 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
+| — | Production hardening | In progress | `phase-14-production-hardening`: request size limits, rate limiting, room TTL cleanup, room-code copy. Evidence: 128 tests pass, all builds/typechecks pass. |
 
 ## Blockers
 
@@ -88,7 +90,8 @@
 - **Resolved in release engineering (#16):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
 - **Resolved in online client (#17):** a shipped web client consumes the server protocol.
 - **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
-- **Follow-ups (not MVP blockers):** automated iOS runtime test, production-grade shared room store for horizontal scaling, rate limiting/abuse protection, native client polish.
+- **Resolved in production hardening (in progress):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
+- **Follow-ups (not MVP blockers):** automated iOS runtime test, production-grade shared room store for horizontal scaling, native client polish.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)
