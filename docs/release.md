@@ -60,6 +60,10 @@ Server → client:
 
 Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
 
+## Rulesets
+
+The server supports `classic-v1` (frozen casual ruleset) and `classic-tournament-v1` (adds the threefold-repetition draw rule for ranked/competitive play). See `docs/rules-v0.1.md` and `docs/rules-tournament-v1.md`.
+
 ## Persistence
 
 Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence.ts`). By default the server writes to `data/rooms.json`; set `ROOM_STORE_PATH` to use a different location. The store is loaded when `MatchServer` starts and updated after every room mutation.
@@ -132,12 +136,12 @@ The server is a standalone `node:http` process with no external dependencies, wh
 
 - **Scope:** the MVP supports two-player online matches (human vs human, human vs AI) with reconnect, stale-move rejection, and abandonment. Tournaments, accounts, leaderboards, and persistent history are **not** in scope.
 - **Support channel:** bug reports via the repository issues (`https://github.com/IcyNoctiluca/Chopsticks/issues`).
-- **Compatibility:** the server advertises its engine version (`0.1.0`) and supported rulesets (`classic-v1`) on `/health`. Clients should consult this and refuse to join rooms whose engine version differs. A future client/server version mismatch will be surfaced as `incompatible-engine-version`.
+- **Compatibility:** the server advertises its engine version (`0.1.0`) and supported rulesets (`classic-v1`, `classic-tournament-v1`) on `/health`. Clients should consult this and refuse to join rooms whose engine version differs. A future client/server version mismatch will be surfaced as `incompatible-engine-version`.
 - **No SLA** is offered for the MVP; availability is best-effort.
 
 ## Release criteria (MVP — shippable)
 
-- [x] Engine frozen at `classic-v1` v1.0, engine `0.1.0`, with deterministic replay (Phase 04/05).
+- [x] Engine frozen at `classic-v1` v1.0 and `classic-tournament-v1` v1.0, engine `0.1.0`, with deterministic replay (Phase 04/05).
 - [x] Clients cannot authoritatively alter state (server validates every move via the engine) — integration tested.
 - [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`, `tests/server-ws.test.ts`).
 - [x] A local web app lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
@@ -148,9 +152,9 @@ The server is a standalone `node:http` process with no external dependencies, wh
 
 **Known limitations / follow-ups (out of MVP scope):**
 - iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
-- Draw-by-repetition / move cap for ranked online play (a `classic-tournament-v1` variant or server-side match policy — see `docs/analysis.md`).
 - Rate limiting / abuse protection at the edge.
 - Production-grade shared room state: `FileRoomStore` is single-node; horizontal scaling needs a Redis/DB-backed `RoomStore`.
+- Automated iOS runtime test in CI (requires macOS/Xcode runner).
 
 ## Post-launch metrics (opt-in, planned — NOT active in MVP)
 

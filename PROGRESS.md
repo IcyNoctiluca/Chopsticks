@@ -2,19 +2,19 @@
 
 ## Current state
 
-**Active phase:** Online client
+**Active phase:** Tournament ruleset
 
-**Status:** Online web client is in progress on `phase-12-online-client`. The client (`web/online.html` + `web/online.ts`) connects to the match server over WebSocket, supports creating/joining rooms, adding an AI opponent, and submitting moves. The local web client links to the online page. Remaining: final verification, commit, push, and PR.
+**Status:** The parked `classic-tournament-v1` branch has been rebased onto main and integrated with the stabilized server and online client. It adds the threefold-repetition draw rule as a separate ruleset, half-point match scoring, and server/online-client support for selecting the ruleset. Remaining: final verification, commit, push, and PR.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-Complete the online-client branch and merge it:
+Complete the tournament-ruleset branch and merge it:
 
 1. Run full verification (typecheck, tests, engine + server + web builds, iOS-app typecheck).
-2. Update `PROGRESS.md` and `docs/release.md` with client details.
-3. Commit, push `phase-12-online-client`, and open PR to `main`.
-4. After merge, assess shippability; remaining candidates are tournament draw policy, native iOS runtime test, and broader production hardening.
+2. Update `PROGRESS.md` and `docs/release.md` with ruleset details.
+3. Commit, push `phase-10-tournament-draw`, and open PR to `main`.
+4. After merge, the MVP is shippable with local play, online play, tournament draw support, production image, and CI. Remaining candidates: native iOS runtime test, shared room store, broader hardening.
 
 ## Decision log
 
@@ -37,6 +37,7 @@ Complete the online-client branch and merge it:
 | 2026-08-16 | Release engineering: stale-room sweep | Accepted | `MatchServer` supports an optional `sweepIntervalMs`. The production server defaults to 30s sweeps; set `SWEEP_INTERVAL_MS=0` to disable. Tests use `sweepIntervalMs: null` to avoid background timers. |
 | 2026-08-16 | Release engineering: CI | Accepted | `.github/workflows/ci.yml` runs typecheck, tests, engine/server/web builds, iOS-app typecheck, and a Docker production-image smoke test on pushes/PRs to `main`. |
 | 2026-08-16 | Online web client | Accepted | A separate `web/online.html` + `web/online.ts` uses WebSocket to consume the server protocol. It reuses hand SVG/styles, supports create/join/add-ai/move, and auto-reconnects. The Vite build produces both `index.html` and `online.html` entries. |
+| 2026-08-16 | Tournament ruleset `classic-tournament-v1` | Accepted | Separate ruleset from frozen `classic-v1`; adds threefold-repetition draw, half-point match scoring, and is selectable in online play. Implemented in `src/result.ts`; server and online client support it. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -81,15 +82,17 @@ Complete the online-client branch and merge it:
 | 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. These are now fixed on `phase-10-stabilization`. |
 | — | Post-roadmap stabilization | Complete | Merged via PR #15. HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs fixed. Evidence: 113 tests pass, root + ios-app typecheck pass, web build passes. |
 | — | Release engineering | Complete | Merged via PR #16. Compiled server artifact, production Dockerfile, stale-room sweeps, GitHub Actions CI. |
-| — | Online client | In progress | `phase-12-online-client`: web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. Evidence: 114 tests pass, all builds/typechecks pass. |
+| — | Online client | Complete | Merged via PR #17. web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. |
+| — | Tournament ruleset | In progress | `phase-10-tournament-draw` rebased onto main; adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. Evidence: 121 tests pass, all builds/typechecks pass. |
 
 ## Blockers
 
 - **Resolved in stabilization (#15):** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
 - **Resolved in release engineering (#16):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
-- **Resolved in online client (in progress):** a shipped web client consumes the server protocol.
+- **Resolved in online client (#17):** a shipped web client consumes the server protocol.
+- **Resolved in tournament ruleset (in progress):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
 - **Remaining release-engineering blockers:** no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
-- **Product blockers:** `classic-v1` has no repetition draw for ranked/automated matches; native iOS app is not runtime-tested.
+- **Product blockers:** native iOS app is not runtime-tested.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)
