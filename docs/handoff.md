@@ -1,209 +1,203 @@
-# Handoff — iOS native shell (completed)
+# Repository review and handoff
 
-> **Status:** The handoff is complete. The iOS native shell now builds, launches, and renders on the iOS Simulator. This document is preserved as a record of the setup steps and gotchas encountered along the way. For the current build instructions, see `docs/ios-app.md`.
+This is the current pickup document for the repository. It supersedes the former iOS-shell handoff. Historical iOS setup details that are still useful are retained in `docs/ios-app.md` and in commit `d3f55f4`.
 
-This document was a clean handoff for an agent picking up the Chopsticks project on a different machine. It records where the work stopped, what was verified working, and the precise next steps.
+- **Reviewed:** 2026-08-16 (Europe/Amsterdam)
+- **Reviewed commit:** `17f98ed3759918bff8077905b5f6a3d9fa6a3b4c`
+- **Branch at review start:** `main`, exactly aligned with `origin/main`
+- **Working tree at review start:** clean
+- **Review scope:** source, tests, architecture, phase evidence, release documentation, dependency state, and targeted runtime reproductions
 
-**Last updated:** 2026-08-15
-**Last commit on `main`:** `6f1b637` (Merge PR #7)
-**Active branch:** `ios-native-shell`
+## Bottom line
 
----
+The frozen `classic-v1` engine and local-play foundation are healthy. After synchronising the container's dependency volume with `package-lock.json`, root typecheck, all 101 Vitest tests, the engine build, and the web build pass.
 
-## 1. Repository state
+The repository should not currently be described as production-ready or as an end-to-end online product. There are release-blocking defects in HTTP reconnect, session scoring/undo, client game rotation, and room-seat state transitions. The privacy and failure-handling documentation also describes the pre-persistence system and is materially false for the current server. The iOS app has historical simulator-build evidence, but its documented TypeScript verification is not reproducible and its native Jest test targets the unused template app.
 
-| Branch | Purpose | Status |
-| --- | --- | --- |
-| `main` | All phases 00–07 + web polish merged | Clean, in sync with `origin/main` at `6f1b637` |
-| `ios-native-shell` | Current in-progress work: wiring the RN iOS shell to the shared engine | **Uncommitted/unpushed** — see §3 |
+Treat `PROGRESS.md`'s older phase rows as historical evidence. This document and the 2026-08-16 current-state block at the top of `PROGRESS.md` supersede their “shippable” wording.
 
-PRs #1–#7 are merged. Roadmap phases 00–07 complete. Post-roadmap polish (SVG hand assets) merged in PR #7. The iOS native shell work is the active post-roadmap follow-up.
+## Verified repository state
 
-## 2. What's verified working (do not re-verify unless you change it)
+- `main` and `origin/main` were both at `17f98ed`; there were no uncommitted files before this documentation review.
+- `origin` is the current authoritative remote. Local `ios-native-shell` and `origin/ios-native-shell` remain at `d3f55f4`, but that work is already merged into `main` by PR #8; do not resume that branch.
+- `upstream/main` is stale at `6f1b637` and should not be treated as the current baseline.
+- The implementation is split cleanly into `src/` (engine), `ai/`, `session/`, `server/`, `web/`, `ios-app/`, and `ios-native/`. Imports point toward the engine; no engine file imports client, network, storage, or platform code.
+- The online server supports HTTP, WebSocket, authoritative engine validation, AI seats, and synchronous JSON-file persistence at the module level. The web and iOS clients are local-play clients only; neither consumes the online protocol.
 
-- **Engine** (`src/`) — `classic-v1`, frozen v1.0, engine 0.1.0. Deterministic, framework-free, immutable, zero runtime deps. 92 tests.
-- **Web MVP** (`web/`) — Vite + vanilla TS, runs at `http://localhost:5173` via `docker compose exec -d dev npm run web`. Builds (`web:build`).
-- **Authoritative match server** (`server/`) — `MatchServer` authoritative module + `node:http` wrapper. 18 server tests incl. HTTP `/health` smoke.
-- **AI** (`ai/`) — random / heuristic / solved, all via engine API only.
-- **Session** (`session/`) — GameRecord, replay, undo, match scoring, versioned persistence.
-- **Containerised dev** — Docker + colima. `docker compose up -d` then `docker compose exec dev npm <cmd>`. **Note:** iOS builds cannot run in the container (no Xcode); iOS work happens on the host.
+## Verification evidence
 
-All of the above is on `main` and merged. The handoff branch only adds the native iOS shell wiring.
+All commands were run through the dev container as required by `AGENTS.md`.
 
-## 3. What's on the `ios-native-shell` branch (uncommitted at handoff)
+The existing named `node_modules` volume was stale: it contained `ws@7.5.13` and no `@types/ws`, while the lockfile requires `ws@8.21.3` and `@types/ws@8.18.1`. That initially caused five WebSocket-related test failures and root typecheck failures. Running this inside the container corrected the environment without changing tracked files:
 
-Two things:
-
-### 3.1 `ios-app/` — TypeScript RN components (already committed via PR #7, on `main`)
-- `ios-app/App.tsx` — RN entry, renders `<GameScreen />`.
-- `ios-app/GameScreen.tsx` — full game UI using the **shared** `@chopsticks/engine` and `session/` APIs (same code as the web client).
-- `ios-app/HandSVG.tsx` — hand asset via `react-native-svg`, identical geometry to `web/handSVG.ts`.
-- `ios-app/tsconfig.json` — typecheck config (no `rootDir`, so it can import `../src` and `../session`).
-- Verification: `docker compose exec dev npx tsc --noEmit -p ios-app/tsconfig.json` (clean) and `tests/ios-app.test.ts` (3 integration tests passing).
-
-### 3.2 `ios-native/` — React Native 0.87 project scaffold, WIRED UP (the new uncommitted work)
-A full `npx @react-native-community/cli init` scaffold that has been modified to use the shared engine code.
-
-**Modifications made on this branch (already applied in the working tree, about to be committed):**
-- `ios-native/index.js` — entry now imports `App` from `../ios-app/App` (not the default `./App`).
-- `ios-native/metro.config.js` — `watchFolders: [workspaceRoot]` and `nodeModulesPaths` for both `ios-native/node_modules` and `../node_modules`, so Metro can resolve the shared engine/session/ai code.
-- `ios-native/package.json` — `react-native-svg` added as a dependency (needed by `HandSVG.tsx`).
-- `ios-native/ios/Podfile.lock` — `pod install` completed (87 pods installed), so `react-native-svg` native pod is wired.
-- **The embedded `.git` directory that `npx react-native init` creates inside `ios-native/` has been removed** so the project tracks as plain files in the parent repo. If you re-init a fresh RN scaffold, remove `ios-native/.git` again before committing.
-
-**Completed on this branch:**
-- `npx react-native run-ios --simulator="iPhone 17 Pro"` now succeeds end-to-end. The app renders the Chopsticks game UI in the simulator using the shared engine/session code.
-- Two Metro wiring fixes were required beyond the original handoff; see §5.5.
-
-## 4. iOS / Xcode / Simulator setup
-
-This is the part that was fragile and is worth documenting carefully.
-
-### 4.1 Tooling that IS installed on this machine
-- **Xcode 26.6** at `/Applications/Xcode.app`, selected via `xcode-select` at `/Applications/Xcode.app/Contents/Developer`.
-- **iOS 26.5 Simulator runtime** (build 23F77) — downloaded via `xcodebuild -downloadPlatform iOS` (8.5 GB). Registered and Ready.
-- **CocoaPods 1.17.0** via `brew install cocoapods`.
-- **Node 25.9.0**, **npm 11.12.1**, Ruby 4.0.6 (homebrew), `pod` on PATH.
-
-### 4.2 Gotchas encountered (and how they were resolved)
-
-1. **Missing simulator runtime.** Xcode was installed but `simctl` showed zero runtimes/devices. Fix: `xcodebuild -downloadPlatform iOS`. The runtime is a separate ~8.5 GB download on recent Xcode.
-
-2. **"Duplicate" / "Unusable" runtime entries after manual `simctl runtime add`.** Do NOT manually call `xcrun simctl runtime add` on the DMG — it creates duplicate unusable entries. If you get into this state:
-   ```sh
-   xcrun simctl runtime list                       # note the IDs
-   xcrun simctl runtime delete <each-unusable-id>  # delete duplicates
-   xcrun simctl runtime delete <ready-id>          # delete the Ready one too
-   killall -9 com.apple.CoreSimulator.CoreSimulatorService
-   xcodebuild -downloadPlatform iOS                # re-download cleanly (~10–15 min)
-   ```
-   After the clean re-download, `xcrun simctl list runtimes` should show `iOS 26.5 (... com.apple.CoreSimulator.SimRuntime.iOS-26-5)`.
-
-3. **Deleting all simulator devices via `simctl delete unavailable` left no devices.** After the runtime was re-registered cleanly, devices had to be recreated:
-   ```sh
-   xcrun simctl create "iPhone 17 Pro" "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro" "com.apple.CoreSimulator.SimRuntime.iOS-26-5"
-   xcrun simctl boot <device-udid>
-   open -a Simulator
-   ```
-   On a fresh machine with a clean Xcode install + runtime download, the default simulator devices should already exist — you likely won't need to `simctl create`.
-
-4. **`bundle exec pod install` failed** (Gemfile pins older cocoapods). Fix: run `pod install` directly with the system-installed CocoaPods, not `bundle exec`. RN prints a deprecation warning but it works.
-
-5. **`npx react-native run-ios` initially failed with "no terminal app was specified" and "iOS devices or simulators not detected".** This is because the simulator wasn't booted at the time. Always boot a simulator first (`xcrun simctl boot <udid>` then `open -a Simulator`) before `run-ios`.
-
-### 4.3 Verified simulator state at handoff
 ```sh
-xcrun simctl list runtimes
-# iOS 26.5 (26.5 - 23F77) - com.apple.CoreSimulator.SimRuntime.iOS-26-5
-
-xcrun simctl list devices booted
-# iPhone 17 Pro (<udid>) (Booted)
+docker compose exec -T dev npm ci
 ```
 
-## 5. Exact next steps on the new machine
+Results after that clean install:
 
-### 5.1 Environment prerequisites
-1. macOS with **full Xcode** installed (not just Command Line Tools).
-2. `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
-3. `sudo xcodebuild -runFirstLaunch` and accept the license (`sudo xcodebuild -license`).
-4. Verify the iOS Simulator runtime is present: `xcrun simctl list runtimes`. If empty, run `xcodebuild -downloadPlatform iOS` (8.5 GB).
-5. Install **CocoaPods**: `brew install cocoapods`.
-6. Install **Node 22+** and npm (the RN template requires `node >= 22.11.0`).
-
-### 5.2 Get the code
-```sh
-git clone <repo-url> Chopsticks
-cd Chopsticks
-git fetch origin
-git checkout ios-native-shell        # the active handoff branch
-```
-If the branch wasn't pushed before the move, the receiving agent needs the committed `ios-native/` tree from the handoff commit (see §7 — the branch will be pushed as part of handoff).
-
-### 5.3 Install iOS dependencies (idempotent — safe to re-run)
-```sh
-cd ios-native
-npm install                          # installs react-native-svg etc.
-cd ios
-pod install                          # NOT `bundle exec pod install`
-```
-
-### 5.4 Boot a simulator and run the app (the resume point)
-```sh
-# Boot a simulator
-xcrun simctl create "iPhone 17 Pro" "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro" "com.apple.CoreSimulator.SimRuntime.iOS-26-5"  # only if no devices exist
-xcrun simctl boot "iPhone 17 Pro"    # or by UDID
-open -a Simulator
-
-# Build and launch
-cd ios-native
-npx react-native run-ios --simulator="iPhone 17 Pro"
-```
-This command now completes successfully; expect a first build of several minutes (Hermes compile + Xcode build). On success the Chopsticks app renders in the simulator using the shared engine/session code from `../src` and `../session`.
-
-### 5.5 Metro wiring fixes applied after the handoff
-
-The first successful simulator build required two changes to `ios-native/metro.config.js`:
-
-1. **TypeScript `.js` extension imports.** The shared engine/session/ai code uses Node16/Bundler style imports with explicit `.js` extensions (e.g. `./applyMove.js`). Metro does not map these to `.ts`/`.tsx` by default, so `resolveRequest` tries `.ts`, then `.tsx`, then `.js`.
-2. **Prefer `ios-native/node_modules` for package imports.** Because `ios-app/` lives outside `ios-native/`, Metro resolved `react-native` from the workspace root's `node_modules`. The root dev dependency is a different RN version than the shell runtime, which broke asset resolution. The custom resolver now pretends package requests originate inside `ios-native/` so the shell's dependencies win.
-
-These fixes are committed on `ios-native-shell`; no local workaround is needed.
-
-### 5.6 Start Metro separately if needed
-`run-ios` starts Metro automatically. If it complains about a terminal, run `npm start` in one terminal then `npx react-native run-ios --no-packager` in another.
-
-## 6. How the native app reuses the shared engine
-
-The single-engine principle (see `DESIGN.md` → "Client portability" and "Layer responsibilities") is preserved: `ios-app/GameScreen.tsx` imports from `../src/index.js` and `../session/session.js` directly. Metro's `watchFolders: [workspaceRoot]` and the `nodeModulesPaths` in `ios-native/metro.config.js` make this resolve. There is **no separate engine implementation** in the iOS app.
-
-## 7. Handoff actions taken by the previous agent
-
-1. Removed `ios-native/.git` (embedded repo) so the scaffold tracks in the parent repo.
-2. Committed the wired `ios-native/` tree on branch `ios-native-shell`.
-3. Pushed `ios-native-shell` to `origin` so a fresh checkout on the new machine gets it.
-4. Wrote this document (`docs/handoff.md`).
-5. Updated `PROGRESS.md` with the in-progress iOS shell state.
-
-## 8. Other follow-ups (non-blocking, logged in `PROGRESS.md`)
-
-- Persistent room store across server restarts (Redis/DB) — Phase 07 follow-up.
-- WebSocket real-time transport wrapping `MatchServer` — Phase 07 follow-up.
-- Tournament draw rule (`classic-tournament-v1`) for ranked online play — Phase 04 follow-up.
-
-These are independent of the iOS work and can be picked up later.
-
-## 9. Key files and docs
-
-| Path | Purpose |
+| Check | Result |
 | --- | --- |
-| `AGENTS.md` | Working agreement: source of truth, git workflow (per-phase branch→PR→merge→delete), containerised dev, engine boundaries, rule-change policy, completion standard. **Read this first.** |
-| `DESIGN.md` | Architecture, layer responsibilities, client portability. |
-| `PROGRESS.md` | Decision log, phase tracker, blockers, playtest findings. Updated continuously. |
-| `docs/rules-v0.1.md` | `classic-v1` rules spec (frozen v1.0). |
-| `docs/api.md` | Engine public API + invalid-move contract. |
-| `docs/analysis.md` | Phase 04 game-theoretic analysis (1142 states, opening = DRAW). |
-| `docs/release.md` | Release ops: privacy, failure handling, deployment, support, release criteria, planned metrics. |
-| `docs/ios-app.md` | Earlier iOS app doc (scaffold status, portability notes, build path). Some of this is now superseded by `docs/handoff.md`. |
-| `docs/handoff.md` | This file. |
-| `src/` | The engine (public API in `src/index.ts`). |
-| `session/` | Session layer (match config, AI turns, undo policy, persistence). |
-| `ai/` | AI opponents (random / heuristic / solved). |
-| `server/` | Authoritative `MatchServer` + `node:http` wrapper. |
-| `web/` | Vite web MVP client. |
-| `cli/` | Terminal CLI (`npm run play`). |
-| `ios-app/` | TypeScript RN components (UI logic, shared-engine-dependent). |
-| `ios-native/` | The native RN 0.87 project shell (Xcode workspace, Pods, Metro config) — the active handoff work. |
-| `tests/` | 92 passing tests (engine, invariants, record, AI, session, server, analysis, CLI, web, ios-app). |
+| `docker compose exec -T dev npm run typecheck` | Pass |
+| `docker compose exec -T dev npm test` | Pass: 12 files, 101/101 tests |
+| `docker compose exec -T dev npm run build` | Pass; this builds `src/` only |
+| `docker compose exec -T dev npm run web:build` | Pass; 11.47 kB JS, 2.75 kB CSS |
+| `docker compose exec -T dev npx tsc --noEmit -p ios-app/tsconfig.json` | Fail: root environment cannot resolve `react-native-safe-area-context` |
+| From `/app/ios-native`, `npx tsc --noEmit -p ../ios-app/tsconfig.json` | Fail under TypeScript 6: deprecated `baseUrl` is an error without `ignoreDeprecations` |
+| From `/app/ios-native`, `npx tsc --noEmit -p tsconfig.json` | Pass, but it does not include `../ios-app/`; it checks the unused template `ios-native/App.tsx` |
+| `npm audit` | 12 dev-tool findings: 1 critical, 8 high, 3 moderate |
+| `npm audit --omit=dev` | 0 production dependency findings |
 
-## 10. Resume checklist for the receiving agent
+The native Xcode/simulator build was not rerun during this review. The latest evidence is the successful 2026-08-15 simulator build recorded in commit `8e7d5f3` and `docs/ios-app.md`.
 
-- [ ] Read `AGENTS.md` and `PROGRESS.md` first (per the working agreement).
-- [ ] Read this handoff doc in full.
-- [ ] Clone/fetch and check out `ios-native-shell`.
-- [ ] Confirm Xcode + iOS Simulator runtime are installed on the new machine (§5.1).
-- [ ] `npm install` + `pod install` in `ios-native/` (§5.3).
-- [ ] Boot a simulator (§5.4).
-- [ ] Run `npx react-native run-ios --simulator="iPhone 17 Pro"` to completion (§5.4) — this is the exact resume point.
-- [ ] If the build succeeds, play the game in the simulator, then iterate on the native UI (animations, accessibility, polish per Phase 06 exit criteria for the native client).
-- [ ] If the build fails, capture the error, update `PROGRESS.md`, and either resolve or log as a blocker per the working agreement.
-- [ ] When the iOS shell is shippable, follow the standard git workflow in `AGENTS.md` (branch → PR → merge → delete → pull `main`).
+Important environment note: rebuilding/restarting Compose does not necessarily refresh the named `chopsticks_node_modules` volume after manifest changes. Run `npm ci` inside the container after `package.json` or `package-lock.json` changes. Do not install root dependencies on the host.
+
+## What is solid
+
+- `classic-v1` is frozen and explicitly specified in `docs/rules-v0.1.md`; rules behavior should not be changed during stabilization.
+- The engine is deterministic, serialisable, immutable in practice, and framework-free. Rule examples, invalid moves, immutability, invariants, replay, and solver counts are covered.
+- The analysis regression still reports 1,142 reachable states and protects the frozen game-theoretic profile.
+- Root typecheck and all 101 tests pass from a lockfile-synchronised container.
+- The engine package and web client build successfully.
+- Server tests cover the happy paths for authority, stale moves, module-level sync, WebSocket play, and file persistence.
+- Git history is phase/PR based and `main` was clean and aligned with `origin/main` before this review.
+
+## Prioritised findings
+
+### P0 — Stabilise before calling the product shippable
+
+#### 1. The documented HTTP reconnect endpoint always returns 404
+
+`server/http.ts` tests `req.url` against `^/rooms/[^/]+/sync$`. A real request includes `?clientId=...`, so it cannot match. A live reproduction against an isolated store returned:
+
+```json
+{"status":404,"body":{"error":"not-found"}}
+```
+
+The module-level `MatchServer.sync()` and WebSocket `sync` message work; only the documented HTTP route is broken. Parse the URL pathname before route matching, and add an HTTP integration test for the exact URL shown in `docs/release.md`.
+
+Relevant files: `server/http.ts`, `tests/server.test.ts`, `docs/release.md`.
+
+#### 2. Undo after game completion corrupts match scoring
+
+`advanceAITurns()` awards a game whenever it receives a finished record and `session.gamesPlayed === current.gamesPlayed`. `undoInSession()` rewinds only the record; it does not reverse `scores` or `gamesPlayed`. Replaying the final move awards the same game again.
+
+Reproduction:
+
+```json
+{"scored":{"A":0,"B":1},"afterUndo":{"A":0,"B":1},"rescored":{"A":0,"B":2},"gamesPlayed":2}
+```
+
+Calling `advanceAITurns()` repeatedly on an already-finished session can also award repeatedly. Both clients expose Undo after game completion, and toggling AI calls `advanceAITurns()`, so this is user-reachable.
+
+Define the intended terminal-undo policy before changing code: either prohibit terminal undo after a score is committed, or make score commitment reversible/idempotent. Add session tests for terminal undo, repeated `advanceAITurns()`, and AI toggling on a finished game.
+
+Relevant files: `session/session.ts`, `web/client.ts`, `ios-app/GameScreen.tsx`, `tests/session.test.ts`.
+
+#### 3. Web and iOS clients break alternating starters
+
+`startNextGame()` correctly returns a session with both a new record and an advanced `startingPlayerNext`. Both clients keep only `.currentRecord`, discarding the returned `startingPlayerNext`. After the first restart, subsequent games continue to start with the same player instead of alternating.
+
+Use the complete session returned by `startNextGame()` and then apply only the intended config changes. Add client-flow tests covering at least three consecutive games. Also decide whether “New game” is allowed before the current game finishes.
+
+Relevant files: `web/client.ts` (`onRestart`), `ios-app/GameScreen.tsx` (`onRestart`), `tests/web.test.ts`, `tests/ios-app.test.ts`.
+
+#### 4. Room/seat transitions do not preserve match invariants
+
+Verified defects:
+
+- After `addAI()`, `joinRoom()` accepts a human because an AI has `clientId: null`; the human silently replaces the AI during an active match.
+- A room created with an AI host (`isAI: true`) starts playing when B joins, but `joinRoom()` does not call `maybeAutoPlayAI()`. The room remains on A's turn with zero moves and no human able to act.
+
+Related untested risks: `joinRoom()` and `addAI()` do not require `phase === "lobby"`; repeated or late calls can reset a room to `playing` in AI-seat cases. Define an explicit transition table for lobby/playing/finished/abandoned and empty/human/AI seats, enforce it in one place, and test every rejected transition.
+
+Relevant files: `server/matchServer.ts`, `tests/server.test.ts`, `tests/server-ws.test.ts`.
+
+#### 5. Privacy/release documentation is false after persistence was added
+
+`server/persistence.ts` writes the entire `MatchRoom` to `data/rooms.json`, including display names, client IDs, timestamps, and move history. `docs/release.md` still says display names are memory-only, rooms disappear on restart, and no persistent user storage exists. Its failure table, deployment section, release checklist, limitations, and test counts also describe the old in-memory/HTTP-only server.
+
+Do not ship a privacy statement until it reflects actual retention and deletion behavior. Decide retention, cleanup, file permissions, corruption recovery, and whether client IDs/display names need to be persisted. Then update `docs/release.md`, `PROGRESS.md`, and `README.md` together.
+
+### P1 — Required for a credible public server/release
+
+#### 6. HTTP and WebSocket inputs are trusted TypeScript casts at runtime
+
+There is no schema validation for message shapes, strings, move discriminants, hand names, numeric bounds, or body size. Malformed JSON is parsed before `guard()` in `server/http.ts`, so its rejection is not converted into the documented JSON error. Some malformed move objects can reach engine helpers as `undefined` and produce internal errors rather than a typed `illegal-move` response. Request bodies are accumulated without a size limit.
+
+Add transport-boundary validation, body/message limits, consistent 4xx mappings, and negative tests for malformed JSON and structurally invalid moves. Keep the engine API typed; validate untrusted data before casting it to `Move`.
+
+#### 7. The repository has no runnable production artifact
+
+`npm run build` compiles only `src/`. `server/`, `session/`, and `ai/` are not emitted. `npm run serve` relies on the dev dependency `tsx`. The Dockerfile is explicitly a development image and its command is `sleep infinity`. `docs/release.md` describes a production multistage image as future work rather than providing one.
+
+Add a production server build/entry point and a runtime container or document another concrete deployment target. Test the built artifact, not only TypeScript execution through `tsx`.
+
+#### 8. Timeouts and abandonment are configuration without runtime enforcement
+
+`MatchConfig.moveTimerMs` is unused. Server `moveDeadlineMs` is stored but never evaluated. `abandonIfStale()` works only when called explicitly; `server/http.ts` has no periodic sweep, so deployed rooms are never abandoned automatically. The persistence `remove()` path is unreachable and abandoned rooms remain stored.
+
+Resolve whether these are gameplay features or deployment policies, then implement one authoritative behavior and integration-test the running server.
+
+#### 9. Persistence is a synchronous prototype, not production-safe storage
+
+Every mutation synchronously rereads and rewrites the entire JSON file. Writes are non-atomic, there is no schema/version validation, corrupt JSON prevents startup, records have no cleanup policy, and multiple processes would race. `RoomStore` advertises async methods, but `MatchServer` explicitly rejects async `load()` and does not await async `save()`/`remove()`.
+
+Either narrow the interface/documentation to a single-process synchronous development store or implement an actually async, durable store and lifecycle.
+
+#### 10. There is no end-to-end online client
+
+The web and iOS apps use local `session/` state only. They do not call HTTP or WebSocket APIs. Phase 07's server protocol exists, but “authoritative online matches” are currently exercisable only through tests or a custom protocol client. Keep client-side online play as a required product milestone, not a cosmetic follow-up, if the release is advertised as online.
+
+### P2 — Quality, verification, and documentation debt
+
+- The documented iOS typecheck fails, and `ios-native/__tests__/App.test.tsx` renders the unused template `ios-native/App.tsx`, not the registered `ios-app/App.tsx`. Make one native command typecheck and test the actual entry component. Preserve the Metro resolver behavior when doing so.
+- No CI workflow is tracked, so the “main always green” policy is manual. There is also no root lint script even though `AGENTS.md` requires lint before phase completion.
+- The root package is named `@chopsticks/engine` but now declares `ws` as a runtime dependency. The `src/` engine code remains dependency-free, but publishing this package would pull `ws`, contradicting the “zero runtime deps” claim. Split package boundaries or adjust claims.
+- The clean-install audit reports 12 vulnerabilities in dev tooling, including a critical Vitest advisory and high-severity Vite/Metro/React Native chains. Production dependencies report zero. Upgrade deliberately and rerun all build/native checks; do not use `npm audit fix --force` blindly.
+- Before this review, `README.md` said 71 tests; it now says 101. Historical sections of `PROGRESS.md` and the still-stale `docs/release.md` contain 89/92/101 counts and mutually contradictory statements about WebSockets and persistence. The previous handoff was also stale; this file now replaces it.
+- Phase 06 completion lacks recorded evidence of the required new-player playtest and manual accessibility check. Existing tests exercise session flows, not DOM/native rendering or assistive technology.
+- `classic-v1` deliberately has no repetition draw. This remains an accepted local-play rule but a blocker for ranked/automated online matches unless a separate tournament ruleset or server match policy is defined.
+- Match configuration says `gamesToWin`, but clients do not call `matchWinner()` or stop/announce a completed match. The rules modal says “win the match by winning the most games,” which does not describe first-to-N behavior.
+
+## Recommended implementation order
+
+1. Create a stabilization branch from updated `main`; do not commit this review directly to `main`.
+2. Fix session scoring idempotency/terminal undo and client starter rotation, with regression tests.
+3. Define and enforce the room phase/seat transition table; fix AI-host startup; add negative tests.
+4. Fix HTTP routing and add transport-boundary validation plus exact HTTP integration tests.
+5. Decide persistence/retention semantics and reconcile privacy, failure, deployment, and support documentation.
+6. Make the actual iOS entry typecheck/test reproducibly.
+7. Add a built production server artifact, runtime image, cleanup/timeout behavior, and CI.
+8. Only then choose between online-client work, tournament draw rules, and native polish.
+
+Do not change `classic-v1` gameplay as part of these fixes. Any draw behavior must be a new ruleset version or a clearly separate server policy and must be recorded in `PROGRESS.md` with tests.
+
+## Regression tests the next agent should add
+
+- HTTP `GET /rooms/{code}/sync?clientId=...` returns authoritative state.
+- Malformed JSON, oversized bodies/messages, missing fields, invalid enums, and malformed moves return stable 4xx/WS error codes without state changes.
+- A human cannot replace an AI; join/add-AI are rejected outside valid lobby transitions.
+- An AI host makes its opening move immediately after the human joins.
+- Terminal scoring is committed exactly once; terminal undo follows the chosen policy; repeated AI advancement/toggling cannot inflate scores.
+- Three consecutive client games alternate A/B/A starters.
+- Runtime abandonment/cleanup occurs without calling a private/module-only helper from the test.
+- The actual `ios-app/App.tsx` entry typechecks and renders in the native test harness.
+- A production-built server starts and passes health, HTTP sync, and WebSocket smoke tests without `tsx`.
+
+## Files to read first in the next session
+
+1. `AGENTS.md` — workflow and non-negotiable engine/container rules.
+2. `PROGRESS.md` — current state at the top; lower phase rows are historical.
+3. This file — verified defects, evidence, and order of work.
+4. `DESIGN.md` and `docs/rules-v0.1.md` — architecture and frozen behavior.
+5. `session/session.ts`, `web/client.ts`, `ios-app/GameScreen.tsx` — first stabilization cluster.
+6. `server/matchServer.ts`, `server/http.ts`, `server/ws.ts`, `server/persistence.ts` — second stabilization cluster.
+7. `docs/release.md` — currently stale; update only after persistence/retention decisions.
+
+## Handoff cautions
+
+- This review intentionally changed documentation only; no implementation fix has been attempted.
+- The Compose container's dependency volume is now synchronised to the committed root lockfile. That is local runtime state, not a tracked repository change.
+- Preserve all unrelated user changes if the working tree is no longer clean when work resumes.
+- Follow the branch/PR/merge/delete workflow in `AGENTS.md`; never commit directly to `main`.
