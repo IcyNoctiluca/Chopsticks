@@ -31,7 +31,14 @@ describe("web build artifact", () => {
   it("index.html references the bundled script and styles", () => {
     const html = readFileSync(resolve(distWeb, "index.html"), "utf8");
     expect(html).toContain("Chopsticks");
-    expect(html).toMatch(/assets\/index-.*\.js/);
+    expect(html).toMatch(/assets\/main-.*\.js/);
+  });
+
+  it("dist-web contains the online client entry", () => {
+    expect(existsSync(resolve(distWeb, "online.html"))).toBe(true);
+    const html = readFileSync(resolve(distWeb, "online.html"), "utf8");
+    expect(html).toContain("Chopsticks Online");
+    expect(html).toMatch(/assets\/online-.*\.js/);
   });
 });
 

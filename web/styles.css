@@ -195,3 +195,40 @@ h1 {
 }
 
 .disabled { opacity: 0.5; cursor: not-allowed; }
+
+#online-link {
+  text-align: center;
+  margin: 0 0 12px;
+}
+#online-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+#online-link a:hover { text-decoration: underline; }
+
+.lobby {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.lobby-row {
+  display: flex;
+  gap: 8px;
+}
+.lobby input {
+  flex: 1;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.lobby button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.lobby button:hover { border-color: var(--accent); }
