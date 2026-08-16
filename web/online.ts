@@ -11,7 +11,7 @@ type ServerMessage =
   | { type: "error"; code: string; message: string };
 
 type ClientMessage =
-  | { type: "create"; clientId: string; displayName: string }
+  | { type: "create"; clientId: string; displayName: string; rulesetId?: "classic-v1" | "classic-tournament-v1" }
   | { type: "join"; roomCode: string; clientId: string; displayName: string }
   | { type: "add-ai"; roomCode: string; difficulty?: "random" | "heuristic" | "solved" }
   | { type: "move"; roomCode: string; clientId: string; move: Move; expectedMoveNumber: number }
@@ -146,10 +146,12 @@ class OnlineClient {
     const joinBtn = document.getElementById("btn-join") as HTMLButtonElement | null;
     const aiBtn = document.getElementById("btn-add-ai") as HTMLButtonElement | null;
     const codeInput = document.getElementById("room-code") as HTMLInputElement | null;
+    const rulesetSelect = document.getElementById("ruleset") as HTMLSelectElement | null;
 
     createBtn?.addEventListener("click", () => {
       this.connect();
-      this.send({ type: "create", clientId: this.clientId, displayName: this.displayName });
+      const rulesetId = rulesetSelect?.value as "classic-v1" | "classic-tournament-v1";
+      this.send({ type: "create", clientId: this.clientId, displayName: this.displayName, rulesetId });
     });
 
     joinBtn?.addEventListener("click", () => {

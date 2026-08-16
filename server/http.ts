@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { MatchServer, MatchServerError, type RoomCode } from "./matchServer.js";
+import { MatchServer, MatchServerError, SUPPORTED_RULESETS, type RoomCode } from "./matchServer.js";
 import { ChopsticksWSServer } from "./ws.js";
 import { FileRoomStore } from "./persistence.js";
 import { validateCreateRoomBody, validateJoinBody, validateAddAIBody, validateMoveBody } from "./validation.js";
@@ -16,7 +16,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   res.setHeader("content-type", "application/json");
   const path = requestPath(req.url);
   if (req.method === "GET" && path === "/health") {
-    return send(res, 200, { status: "ok", engine: "0.1.0", rulesets: ["classic-v1"] });
+    return send(res, 200, { status: "ok", engine: "0.1.0", rulesets: SUPPORTED_RULESETS });
   }
   if (req.method === "POST" && path === "/rooms") {
     const body = await readJson<unknown>(req);

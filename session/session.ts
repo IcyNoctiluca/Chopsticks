@@ -1,11 +1,11 @@
-import type { Move, PlayerId } from "../src/index.js";
+import type { Move, PlayerId, RulesetId } from "../src/index.js";
 import {
   createRecord,
   replay,
   applyMoveToRecord,
   undo as undoRecord,
   canUndo,
-  getWinner,
+  getResult,
   type GameRecord,
 } from "../src/index.js";
 import { chooseAIMove, type Difficulty } from "../ai/chooseMove.js";
@@ -26,6 +26,7 @@ export interface MatchConfig {
   readonly undoPolicy: UndoPolicy;
   readonly moveTimerMs: number | null;
   readonly gamesToWin: number;
+  readonly ruleset?: RulesetId;
 }
 
 export interface MatchSession {
@@ -42,7 +43,7 @@ export function createSession(config: MatchConfig): MatchSession {
   const startingPlayer = config.playerA.type === "ai" ? "A" : "A";
   return {
     config,
-    currentRecord: createRecord({ startingPlayer }),
+    currentRecord: createRecord({ startingPlayer, ruleset: config.ruleset }),
     scores: { A: 0, B: 0 },
     gamesPlayed: 0,
     startingPlayerNext: startingPlayer === "A" ? "B" : "A",
@@ -82,20 +83,21 @@ export function advanceAITurns(session: MatchSession): MatchSession {
       currentRecord: applyMoveToRecord(current.currentRecord, move),
     };
   }
-  const state = getState(current);
-  if (state.status === "finished" && current.currentRecord.moves.length > 0) {
-    const winner = getWinner(state);
+  const result = getResult(current.currentRecord);
+  if ((result.winner !== null || result.isDraw) && current.currentRecord.moves.length > 0 && !session.scored) {
+    const nextScores = { ...current.scores };
+    if (result.winner !== null) {
+      nextScores[result.winner] = nextScores[result.winner] + 1;
+    } else {
+      nextScores.A = nextScores.A + 0.5;
+      nextScores.B = nextScores.B + 0.5;
+    }
     current = {
       ...current,
       scored: true,
+      scores: nextScores,
       gamesPlayed: current.gamesPlayed + 1,
     };
-    if (winner !== null) {
-      current = {
-        ...current,
-        scores: { ...current.scores, [winner]: current.scores[winner] + 1 },
-      };
-    }
   }
   return current;
 }
@@ -104,7 +106,7 @@ export function startNextGame(session: MatchSession): MatchSession {
   const startingPlayer = session.startingPlayerNext;
   return {
     ...session,
-    currentRecord: createRecord({ startingPlayer }),
+    currentRecord: createRecord({ startingPlayer, ruleset: session.config.ruleset }),
     startingPlayerNext: startingPlayer === "A" ? "B" : "A",
     undoCount: 0,
     scored: false,

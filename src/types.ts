@@ -2,7 +2,7 @@ export type PlayerId = "A" | "B";
 
 export type Hand = "left" | "right";
 
-export type RulesetId = "classic-v1";
+export type RulesetId = "classic-v1" | "classic-tournament-v1";
 
 export interface Ruleset {
   readonly id: RulesetId;
