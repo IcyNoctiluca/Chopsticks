@@ -35,6 +35,7 @@ export interface MatchSession {
   readonly gamesPlayed: number;
   readonly startingPlayerNext: PlayerId;
   readonly undoCount: number;
+  readonly scored: boolean;
 }
 
 export function createSession(config: MatchConfig): MatchSession {
@@ -46,6 +47,7 @@ export function createSession(config: MatchConfig): MatchSession {
     gamesPlayed: 0,
     startingPlayerNext: startingPlayer === "A" ? "B" : "A",
     undoCount: 0,
+    scored: false,
   };
 }
 
@@ -61,6 +63,7 @@ export function isAITurn(session: MatchSession): boolean {
 }
 
 export function playHumanMove(session: MatchSession, move: Move): MatchSession {
+  if (session.scored) return session;
   if (isAITurn(session)) throw new Error("Cannot play a human move during an AI turn");
   const record = applyMoveToRecord(session.currentRecord, move);
   const next: MatchSession = { ...session, currentRecord: record };
@@ -68,6 +71,7 @@ export function playHumanMove(session: MatchSession, move: Move): MatchSession {
 }
 
 export function advanceAITurns(session: MatchSession): MatchSession {
+  if (session.scored) return session;
   let current = session;
   while (isAITurn(current)) {
     const state = getState(current);
@@ -79,13 +83,17 @@ export function advanceAITurns(session: MatchSession): MatchSession {
     };
   }
   const state = getState(current);
-  if (state.status === "finished" && current.currentRecord.moves.length > 0 && session.gamesPlayed === current.gamesPlayed) {
+  if (state.status === "finished" && current.currentRecord.moves.length > 0) {
     const winner = getWinner(state);
+    current = {
+      ...current,
+      scored: true,
+      gamesPlayed: current.gamesPlayed + 1,
+    };
     if (winner !== null) {
       current = {
         ...current,
         scores: { ...current.scores, [winner]: current.scores[winner] + 1 },
-        gamesPlayed: current.gamesPlayed + 1,
       };
     }
   }
@@ -99,10 +107,12 @@ export function startNextGame(session: MatchSession): MatchSession {
     currentRecord: createRecord({ startingPlayer }),
     startingPlayerNext: startingPlayer === "A" ? "B" : "A",
     undoCount: 0,
+    scored: false,
   };
 }
 
 export function canUndoInSession(session: MatchSession): boolean {
+  if (session.scored) return false;
   if (!canUndo(session.currentRecord)) return false;
   if (session.config.undoPolicy === "none") return false;
   if (typeof session.config.undoPolicy === "object") {
@@ -153,7 +163,12 @@ export function deserializeSession(json: string): MatchSession {
   if (data.formatVersion !== FORMAT_VERSION) {
     throw migrate(data);
   }
-  return data.session;
+  const session = data.session;
+  const scored =
+    typeof session.scored === "boolean"
+      ? session.scored
+      : replay(session.currentRecord).status === "finished";
+  return { ...session, scored };
 }
 
 class MigrationError extends Error {
