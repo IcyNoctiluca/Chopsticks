@@ -2,19 +2,15 @@
 
 ## Current state
 
-**Active phase:** Tournament ruleset
+**Active phase:** MVP shippable
 
-**Status:** The parked `classic-tournament-v1` branch has been rebased onto main and integrated with the stabilized server and online client. It adds the threefold-repetition draw rule as a separate ruleset, half-point match scoring, and server/online-client support for selecting the ruleset. Remaining: final verification, commit, push, and PR.
+**Status:** All stabilization, release-engineering, online-client, and tournament-ruleset work is merged. The MVP is shippable: the engine is frozen (`classic-v1` and `classic-tournament-v1`), local and online web clients consume it, the authoritative server persists rooms, a production Docker image builds, and CI runs on every PR. Remaining non-blocking follow-ups: automated iOS runtime test, production-grade shared room store, and broader hardening.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-Complete the tournament-ruleset branch and merge it:
-
-1. Run full verification (typecheck, tests, engine + server + web builds, iOS-app typecheck).
-2. Update `PROGRESS.md` and `docs/release.md` with ruleset details.
-3. Commit, push `phase-10-tournament-draw`, and open PR to `main`.
-4. After merge, the MVP is shippable with local play, online play, tournament draw support, production image, and CI. Remaining candidates: native iOS runtime test, shared room store, broader hardening.
+1. Mark the MVP shippable in docs and merge this final documentation update.
+2. Choose follow-up work based on product priority: native iOS runtime test, shared room store for horizontal scaling, rate limiting/abuse protection, or additional client polish.
 
 ## Decision log
 
@@ -83,16 +79,16 @@ Complete the tournament-ruleset branch and merge it:
 | — | Post-roadmap stabilization | Complete | Merged via PR #15. HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs fixed. Evidence: 113 tests pass, root + ios-app typecheck pass, web build passes. |
 | — | Release engineering | Complete | Merged via PR #16. Compiled server artifact, production Dockerfile, stale-room sweeps, GitHub Actions CI. |
 | — | Online client | Complete | Merged via PR #17. web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. |
-| — | Tournament ruleset | In progress | `phase-10-tournament-draw` rebased onto main; adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. Evidence: 121 tests pass, all builds/typechecks pass. |
+| — | Tournament ruleset | Complete | Merged via PR #18. Adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. |
+| — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 122 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
 
 ## Blockers
 
 - **Resolved in stabilization (#15):** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
 - **Resolved in release engineering (#16):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
 - **Resolved in online client (#17):** a shipped web client consumes the server protocol.
-- **Resolved in tournament ruleset (in progress):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
-- **Remaining release-engineering blockers:** no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
-- **Product blockers:** native iOS app is not runtime-tested.
+- **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
+- **Follow-ups (not MVP blockers):** automated iOS runtime test, production-grade shared room store for horizontal scaling, rate limiting/abuse protection, native client polish.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)

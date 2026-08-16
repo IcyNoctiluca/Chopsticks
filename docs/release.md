@@ -148,7 +148,7 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - [x] An online web client consumes the server protocol to create/join rooms and play human vs human or human vs AI.
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 113 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
+- [x] Containerised development; reproducible builds; 122 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
 
 **Known limitations / follow-ups (out of MVP scope):**
 - iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
