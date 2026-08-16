@@ -16,7 +16,8 @@ export { createGame, type CreateGameOptions } from "./createGame.js";
 export { getLegalMoves, isLegalMove, validateMove } from "./getLegalMoves.js";
 export { applyMove } from "./applyMove.js";
 export { getWinner } from "./getWinner.js";
-export { CLASSIC_V1 } from "./internal.js";
+export { getResult, type GameResult } from "./result.js";
+export { CLASSIC_V1, CLASSIC_TOURNAMENT_V1 } from "./internal.js";
 export {
   createRecord,
   replay,

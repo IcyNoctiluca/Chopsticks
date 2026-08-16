@@ -4,7 +4,7 @@ import {
   applyMoveToRecord,
   getLegalMoves,
   isLegalMove,
-  getWinner,
+  getResult,
   applyMove,
   InvalidMoveError,
   type GameState,
@@ -19,7 +19,7 @@ export type ClientId = string;
 export type RoomCode = string;
 
 export const ENGINE_VERSION = "0.1.0";
-export const SUPPORTED_RULESETS: RulesetId[] = ["classic-v1"];
+export const SUPPORTED_RULESETS: RulesetId[] = ["classic-v1", "classic-tournament-v1"];
 
 export type MatchPhase = "lobby" | "playing" | "finished" | "abandoned";
 
@@ -43,6 +43,7 @@ export interface MatchRoom {
   readonly lastActivityAt: number;
   readonly moveDeadlineMs: number | null;
   readonly history: Move[];
+  readonly isDraw: boolean;
 }
 
 export type ServerError =
@@ -72,6 +73,7 @@ export interface SubmitMoveResult {
   readonly state: GameState;
   readonly moveNumber: number;
   readonly winner: PlayerId | null;
+  readonly isDraw: boolean;
   readonly accepted: boolean;
 }
 
@@ -155,7 +157,7 @@ export class MatchServer {
       throw new MatchServerError("incompatible-ruleset", `Ruleset ${rulesetId} not supported`);
     }
     const roomCode = this.generateCode();
-    const record = createRecord({ startingPlayer: "A" });
+    const record = createRecord({ startingPlayer: "A", ruleset: rulesetId });
     const room: MatchRoom = {
       roomCode,
       rulesetId,
@@ -172,6 +174,7 @@ export class MatchServer {
       lastActivityAt: Date.now(),
       moveDeadlineMs: options.moveTimeoutMs ?? this.moveTimeoutMs ?? null,
       history: [],
+      isDraw: false,
     };
     this.rooms.set(roomCode, room);
     this.persist(roomCode);
@@ -227,20 +230,21 @@ export class MatchServer {
 
     const nextRecord = applyMoveToRecord(room.record, move);
     const nextState = replay(nextRecord);
-    const winner = getWinner(nextState);
+    const result = getResult(nextRecord);
     const updated: MatchRoom = {
       ...room,
       record: nextRecord,
       history: [...room.history, move],
       expectedTurn: room.expectedTurn === "A" ? "B" : "A",
       expectedMoveNumber: room.expectedMoveNumber + 1,
-      phase: winner !== null ? "finished" : "playing",
+      phase: result.winner !== null || result.isDraw ? "finished" : "playing",
+      isDraw: result.isDraw,
       lastActivityAt: Date.now(),
     };
     this.rooms.set(roomCode, updated);
     this.persist(roomCode);
     this.maybeAutoPlayAI(roomCode);
-    return { state: nextState, moveNumber: updated.expectedMoveNumber, winner, accepted: true };
+    return { state: nextState, moveNumber: updated.expectedMoveNumber, winner: result.winner, isDraw: result.isDraw, accepted: true };
   }
 
   sync(roomCode: RoomCode, clientId: ClientId): { state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase } {
@@ -307,18 +311,19 @@ export class MatchServer {
       const move = chooseAIMove(state, player.aiDifficulty);
       const nextRecord = applyMoveToRecord(room.record, move);
       const nextState = replay(nextRecord);
-      const winner = getWinner(nextState);
+      const result = getResult(nextRecord);
       this.rooms.set(roomCode, {
         ...room,
         record: nextRecord,
         history: [...room.history, move],
         expectedTurn: turn === "A" ? "B" : "A",
         expectedMoveNumber: room.expectedMoveNumber + 1,
-        phase: winner !== null ? "finished" : "playing",
+        phase: result.winner !== null || result.isDraw ? "finished" : "playing",
+        isDraw: result.isDraw,
         lastActivityAt: Date.now(),
       });
       this.persist(roomCode);
-      if (winner !== null) return;
+      if (result.winner !== null || result.isDraw) return;
     }
   }
 

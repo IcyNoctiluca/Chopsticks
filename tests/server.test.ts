@@ -146,6 +146,12 @@ describe("MatchServer: ruleset / engine version compatibility", () => {
     const s = newServer();
     expect(() => s.createRoom({ clientId: "alice", displayName: "Alice" }, { rulesetId: "nope" as never })).toThrow(MatchServerError);
   });
+
+  it("creates a classic-tournament-v1 room", () => {
+    const s = newServer();
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" }, { rulesetId: "classic-tournament-v1" });
+    expect(r.state.ruleset).toBe("classic-tournament-v1");
+  });
   it("exposes supported rulesets and engine version", () => {
     expect(SUPPORTED_RULESETS).toContain("classic-v1");
     expect(ENGINE_VERSION).toBe("0.1.0");

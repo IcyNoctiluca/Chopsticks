@@ -1,9 +1,11 @@
 import { MatchServerError, type ClientId } from "./matchServer.js";
 import type { Move } from "../src/index.js";
 
+export type RulesetId = "classic-v1" | "classic-tournament-v1";
+
 export type CreateRoomParams = {
   readonly host: { readonly clientId: ClientId; readonly displayName: string };
-  readonly options: { readonly rulesetId?: "classic-v1"; readonly moveTimeoutMs?: number };
+  readonly options: { readonly rulesetId?: RulesetId; readonly moveTimeoutMs?: number };
 };
 
 export type JoinParams = { readonly clientId: ClientId; readonly displayName: string };
@@ -17,9 +19,9 @@ export function validateCreateRoomBody(body: unknown): CreateRoomParams {
     clientId: requireString(b.clientId, "clientId") as ClientId,
     displayName: requireString(b.displayName, "displayName"),
   };
-  const options: { rulesetId?: "classic-v1"; moveTimeoutMs?: number } = {};
+  const options: { rulesetId?: RulesetId; moveTimeoutMs?: number } = {};
   if (b.rulesetId !== undefined) {
-    if (b.rulesetId !== "classic-v1") invalidRequest("Unsupported rulesetId");
+    if (b.rulesetId !== "classic-v1" && b.rulesetId !== "classic-tournament-v1") invalidRequest("Unsupported rulesetId");
     options.rulesetId = b.rulesetId;
   }
   if (b.moveTimeoutMs !== undefined) {

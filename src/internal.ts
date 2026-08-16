@@ -6,6 +6,12 @@ export const CLASSIC_V1: Ruleset = Object.freeze({
   startingHandValue: 1,
 }) as Ruleset;
 
+export const CLASSIC_TOURNAMENT_V1: Ruleset = Object.freeze({
+  id: "classic-tournament-v1",
+  eliminationThreshold: 5,
+  startingHandValue: 1,
+}) as Ruleset;
+
 export function otherPlayer(player: PlayerId): PlayerId {
   return player === "A" ? "B" : "A";
 }
