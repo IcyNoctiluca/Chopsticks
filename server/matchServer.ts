@@ -55,7 +55,9 @@ export type ServerError =
   | "match-abandoned"
   | "incompatible-ruleset"
   | "incompatible-engine-version"
-  | "room-full";
+  | "room-full"
+  | "invalid-request"
+  | "ai-host-not-allowed";
 
 export class MatchServerError extends Error {
   readonly code: ServerError;
@@ -118,19 +120,21 @@ export class MatchServer {
   }
 
   createRoom(host: { clientId: ClientId; displayName: string; isAI?: boolean; aiDifficulty?: "random" | "heuristic" | "solved" }, options: { rulesetId?: RulesetId; moveTimeoutMs?: number } = {}): { roomCode: RoomCode; playerId: PlayerId; state: GameState } {
+    if (host.isAI) {
+      throw new MatchServerError("ai-host-not-allowed", "A human client must create the room; add an AI opponent after creation");
+    }
     const rulesetId = options.rulesetId ?? "classic-v1";
     if (!SUPPORTED_RULESETS.includes(rulesetId)) {
       throw new MatchServerError("incompatible-ruleset", `Ruleset ${rulesetId} not supported`);
     }
     const roomCode = this.generateCode();
     const record = createRecord({ startingPlayer: "A" });
-    const isAI = host.isAI ?? false;
     const room: MatchRoom = {
       roomCode,
       rulesetId,
       engineVersion: ENGINE_VERSION,
       players: {
-        A: { clientId: isAI ? null : host.clientId, displayName: host.displayName, isAI, aiDifficulty: host.aiDifficulty },
+        A: { clientId: host.clientId, displayName: host.displayName, isAI: false },
         B: { clientId: null, displayName: "(empty)", isAI: false },
       },
       record,
@@ -144,15 +148,12 @@ export class MatchServer {
     };
     this.rooms.set(roomCode, room);
     this.persist(roomCode);
-    if (isAI) this.maybeAutoPlayAI(roomCode);
     return { roomCode, playerId: "A", state: replay(room.record) };
   }
 
   joinRoom(roomCode: RoomCode, clientId: ClientId, displayName: string): { playerId: PlayerId; state: GameState; history: Move[] } {
     const room = this.getRoom(roomCode);
-    if (room.players.B.clientId !== null && !room.players.B.isAI) {
-      throw new MatchServerError("room-full", "Room is full");
-    }
+    this.assertCanFillSeatB(room);
     const updated: MatchRoom = {
       ...room,
       players: { ...room.players, B: { clientId, displayName, isAI: false } },
@@ -166,7 +167,7 @@ export class MatchServer {
 
   addAI(roomCode: RoomCode, difficulty: "random" | "heuristic" | "solved" = "random"): { playerId: PlayerId } {
     const room = this.getRoom(roomCode);
-    if (room.players.B.clientId !== null) throw new MatchServerError("room-full", "Room already has player B");
+    this.assertCanFillSeatB(room);
     const updated: MatchRoom = {
       ...room,
       players: { ...room.players, B: { clientId: null, displayName: "CPU", isAI: true, aiDifficulty: difficulty } },
@@ -254,6 +255,15 @@ export class MatchServer {
     if (!room.players.A.isAI && room.players.A.clientId === clientId) return "A";
     if (!room.players.B.isAI && room.players.B.clientId === clientId) return "B";
     return null;
+  }
+
+  private assertCanFillSeatB(room: MatchRoom): void {
+    if (room.phase !== "lobby") {
+      throw new MatchServerError("room-full", "Match has already started");
+    }
+    if (room.players.B.clientId !== null || room.players.B.isAI) {
+      throw new MatchServerError("room-full", "Seat B is already taken");
+    }
   }
 
   private maybeAutoPlayAI(roomCode: RoomCode): void {

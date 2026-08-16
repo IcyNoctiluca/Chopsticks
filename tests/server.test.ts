@@ -212,6 +212,34 @@ describe("MatchServer: finished matches reject moves", () => {
   });
 });
 
+describe("MatchServer: room phase / seat transitions", () => {
+  it("rejects an AI host", () => {
+    const s = newServer();
+    expect(() => s.createRoom({ clientId: "alice", displayName: "Alice", isAI: true })).toThrow(MatchServerError);
+  });
+
+  it("does not allow joining after an AI has been added", () => {
+    const s = newServer();
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    s.addAI(r.roomCode, "random");
+    expect(() => s.joinRoom(r.roomCode, "bob", "Bob")).toThrow(MatchServerError);
+  });
+
+  it("does not allow adding a second AI", () => {
+    const s = newServer();
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    s.addAI(r.roomCode, "random");
+    expect(() => s.addAI(r.roomCode, "random")).toThrow(MatchServerError);
+  });
+
+  it("does not allow joining after a human has joined", () => {
+    const s = newServer();
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    s.joinRoom(r.roomCode, "bob", "Bob");
+    expect(() => s.joinRoom(r.roomCode, "carol", "Carol")).toThrow(MatchServerError);
+  });
+});
+
 describe("MatchServer HTTP wrapper", () => {
   it("health endpoint returns ok", async () => {
     const { httpServer, server } = await import("../server/http.js");
@@ -224,6 +252,51 @@ describe("MatchServer HTTP wrapper", () => {
     expect(body.status).toBe("ok");
     expect(body.engine).toBe("0.1.0");
     expect(body.rulesets).toContain("classic-v1");
+    await new Promise<void>((r) => httpServer.close(() => r()));
+  });
+
+  it("sync endpoint accepts query parameters", async () => {
+    const { httpServer, server } = await import("../server/http.js");
+    void server;
+    const port = await new Promise<number>((resolve) => {
+      httpServer.listen(0, "127.0.0.1", () => resolve((httpServer.address() as { port: number }).port));
+    });
+    const createRes = await fetch(`http://127.0.0.1:${port}/rooms`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "alice", displayName: "Alice" }),
+    });
+    const createBody = (await createRes.json()) as { roomCode: string };
+    const syncRes = await fetch(`http://127.0.0.1:${port}/rooms/${createBody.roomCode}/sync?clientId=alice`);
+    expect(syncRes.status).toBe(200);
+    const syncBody = (await syncRes.json()) as { phase: string };
+    expect(syncBody.phase).toBe("lobby");
+    await new Promise<void>((r) => httpServer.close(() => r()));
+  });
+
+  it("rejects malformed moves at the transport boundary", async () => {
+    const { httpServer, server } = await import("../server/http.js");
+    void server;
+    const port = await new Promise<number>((resolve) => {
+      httpServer.listen(0, "127.0.0.1", () => resolve((httpServer.address() as { port: number }).port));
+    });
+    const createRes = await fetch(`http://127.0.0.1:${port}/rooms`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "alice", displayName: "Alice" }),
+    });
+    const createBody = (await createRes.json()) as { roomCode: string };
+    await fetch(`http://127.0.0.1:${port}/rooms/${createBody.roomCode}/join`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "bob", displayName: "Bob" }),
+    });
+    const moveRes = await fetch(`http://127.0.0.1:${port}/rooms/${createBody.roomCode}/move`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "alice", move: { type: "tap", player: "A" }, expectedMoveNumber: 0 }),
+    });
+    expect(moveRes.status).toBe(400);
     await new Promise<void>((r) => httpServer.close(() => r()));
   });
 });
