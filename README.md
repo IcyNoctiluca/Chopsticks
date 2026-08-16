@@ -19,7 +19,7 @@ Work through the phase files in order. A phase is complete only when its exit cr
 7. [Phase 06 - Local app](PHASES/06-local-app.md)
 8. [Phase 07 - Online play and release](PHASES/07-online-play-and-release.md)
 
-The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md). Release operations are documented in [docs/release.md](docs/release.md). The iOS React Native app is documented in [docs/ios-app.md](docs/ios-app.md). Active handoff state is in [docs/handoff.md](docs/handoff.md).
+The current ruleset is specified in [docs/rules-v0.1.md](docs/rules-v0.1.md) (`classic-v1`, frozen v1.0; see [docs/analysis.md](docs/analysis.md) for the game-theoretic profile). The engine API is documented in [docs/api.md](docs/api.md). Release operations are documented in [docs/release.md](docs/release.md). The iOS React Native app is documented in [docs/ios-app.md](docs/ios-app.md). Active handoff state is in [docs/handoff.md](docs/handoff.md). App Store / install instructions are in [docs/app-store.md](docs/app-store.md).
 
 ## How to run
 
@@ -29,7 +29,7 @@ Containerised development keeps tooling off your host. Start the runtime once, t
 colima start                 # start the container runtime
 docker compose up -d         # start the dev container
 docker compose exec dev npm ci            # refresh the named dependency volume after manifest changes
-docker compose exec dev npm test          # 101 tests
+docker compose exec dev npm test          # 128 tests
 docker compose exec dev npm run typecheck
 docker compose exec dev npm run web       # local web app at http://localhost:5173
 docker compose run --rm -it dev npm run play   # interactive CLI
@@ -38,6 +38,11 @@ docker compose run --rm -it dev npm run play   # interactive CLI
 See [AGENTS.md](AGENTS.md) for the per-phase branch/PR workflow and container usage.
 
 See [DESIGN.md](DESIGN.md) for architecture and [PROGRESS.md](PROGRESS.md) for the current project state.
+
+## Install on your phone
+
+- **Quickest**: open the deployed web app in Safari, tap Share → **Add to Home Screen**. The PWA works offline and supports local and online play.
+- **App Store**: follow the build/upload steps in [docs/app-store.md](docs/app-store.md) using the React Native project in `ios-native/`.
 
 ## Guiding principle
 

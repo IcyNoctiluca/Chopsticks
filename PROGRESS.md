@@ -2,15 +2,15 @@
 
 ## Current state
 
-**Active phase:** Production hardening
+**Active phase:** Phone install & CI fix
 
-**Status:** Production-hardening work is in progress on `phase-14-production-hardening`. Added HTTP request-body size limits, per-IP rate limiting, room TTL cleanup for finished/abandoned rooms, and room-code display/copy in the online client. The app remains shippable; these changes make it safer to expose to the public internet. Remaining non-blocking follow-ups: automated iOS runtime test and production-grade shared room store.
+**Status:** CI is now green after fixing the build order in `.github/workflows/ci.yml`. Added PWA support (manifest, service worker, icons) so the web app can be added to a phone home screen. Wired the native iOS project (`ios-native/App.tsx`) to the shared `ios-app/GameScreen.tsx` and documented App Store build/upload steps in `docs/app-store.md`. The app is installable via PWA today and App Store-publishable with a macOS/Xcode environment.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-1. Update docs/progress and merge the production-hardening branch.
-2. Decide whether to continue with remaining follow-ups (iOS runtime test, shared store) or consider the implementation complete.
+1. Merge the phone-install/CI-fix branch.
+2. Implementation is complete for the current shippable scope; remaining work (automated iOS runtime test, production shared room store) is documented as follow-ups.
 
 ## Decision log
 
@@ -35,6 +35,8 @@
 | 2026-08-16 | Online web client | Accepted | A separate `web/online.html` + `web/online.ts` uses WebSocket to consume the server protocol. It reuses hand SVG/styles, supports create/join/add-ai/move, and auto-reconnects. The Vite build produces both `index.html` and `online.html` entries. |
 | 2026-08-16 | Tournament ruleset `classic-tournament-v1` | Accepted | Separate ruleset from frozen `classic-v1`; adds threefold-repetition draw, half-point match scoring, and is selectable in online play. Implemented in `src/result.ts`; server and online client support it. |
 | 2026-08-16 | Production hardening | Accepted | Add `MAX_BODY_BYTES`, per-IP rate limiting (`RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX`), `ROOM_TTL_MS` cleanup of finished/abandoned rooms, and room-code copy in the online client. All configurable via environment variables. |
+| 2026-08-16 | CI failure root cause | Resolved | `tests/web.test.ts` checks `dist-web/` but CI ran `npm test` before `npm run web:build`. Reordered CI so the web client builds before tests. |
+| 2026-08-16 | Phone install path | Accepted | Ship PWA support (manifest, service worker, icons) for immediate home-screen installation. Keep the React Native `ios-native/` project wired to the shared game screen and document App Store upload steps. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -82,7 +84,8 @@
 | — | Online client | Complete | Merged via PR #17. web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. |
 | — | Tournament ruleset | Complete | Merged via PR #18. Adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. |
 | — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 128 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
-| — | Production hardening | In progress | `phase-14-production-hardening`: request size limits, rate limiting, room TTL cleanup, room-code copy. Evidence: 128 tests pass, all builds/typechecks pass. |
+| — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
+| — | Phone install & CI fix | In progress | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. |
 
 ## Blockers
 
@@ -90,8 +93,9 @@
 - **Resolved in release engineering (#16):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
 - **Resolved in online client (#17):** a shipped web client consumes the server protocol.
 - **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
-- **Resolved in production hardening (in progress):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
-- **Follow-ups (not MVP blockers):** automated iOS runtime test, production-grade shared room store for horizontal scaling, native client polish.
+- **Resolved in production hardening (#20):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
+- **Resolved in phone install/CI fix (in progress):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
+- **Follow-ups (not MVP blockers):** automated iOS runtime test in CI (requires macOS runner), production-grade shared room store for horizontal scaling, further native client polish.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)
