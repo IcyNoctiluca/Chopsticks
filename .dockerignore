@@ -1,7 +1,12 @@
 node_modules
 dist
+dist-server
+dist-web
+data
 .git
+.github
 .idea
 *.log
 .DS_Store
 coverage
+analysis

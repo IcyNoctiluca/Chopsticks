@@ -78,6 +78,7 @@ export interface SubmitMoveResult {
 export interface MatchServerOptions {
   readonly moveTimeoutMs?: number | null;
   readonly abandonedAfterMs?: number;
+  readonly sweepIntervalMs?: number | null;
   readonly store?: RoomStore;
 }
 
@@ -86,13 +87,39 @@ export class MatchServer {
   private codeCounter = 0;
   private readonly moveTimeoutMs: number | null;
   private readonly abandonedAfterMs: number;
+  private readonly sweepIntervalMs: number | null;
   private readonly store: RoomStore | null;
+  private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(options: MatchServerOptions = {}) {
     this.moveTimeoutMs = options.moveTimeoutMs ?? null;
     this.abandonedAfterMs = options.abandonedAfterMs ?? 60000;
+    this.sweepIntervalMs = options.sweepIntervalMs ?? null;
     this.store = options.store ?? null;
     this.hydrate();
+    this.startSweep();
+  }
+
+  close(): void {
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+      this.sweepTimer = null;
+    }
+  }
+
+  private startSweep(): void {
+    if (this.sweepIntervalMs === null || this.sweepIntervalMs <= 0) return;
+    this.sweepTimer = setInterval(() => this.sweepStaleRooms(), this.sweepIntervalMs);
+  }
+
+  sweepStaleRooms(now = Date.now()): RoomCode[] {
+    const abandoned: RoomCode[] = [];
+    for (const code of this.rooms.keys()) {
+      if (this.abandonIfStale(code, now)) {
+        abandoned.push(code);
+      }
+    }
+    return abandoned;
   }
 
   private hydrate(): void {

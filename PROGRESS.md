@@ -2,19 +2,19 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap stabilization
+**Active phase:** Release engineering
 
-**Status:** Stabilization PR in progress on branch `phase-10-stabilization`. The defects identified in the 2026-08-16 review are being addressed: terminal scoring is now idempotent and terminal undo is prohibited; web/iOS restart preserves alternating starters; room/seat transitions are enforced and AI hosts are rejected; HTTP sync routing handles query strings; transport inputs are validated; iOS entry typechecks after adding the missing `react-native-safe-area-context` dependency; release/privacy docs are reconciled with file persistence. Remaining before the PR: full verification pass, commit, push, and open PR to `main`.
+**Status:** Stabilization PR #15 is merged. Release-engineering work is in progress on `phase-11-release-engineering`: compiled server artifact (`npm run build:server` / `serve:prod`), production Dockerfile (`Dockerfile.prod`), automatic stale-room sweeps, and GitHub Actions CI. The production image builds and passes a health-check smoke test. Remaining: final verification, commit, push, and PR.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-Complete the stabilization branch and merge it:
+Complete the release-engineering branch and merge it:
 
-1. Run full typecheck, engine tests, web build, and iOS-app typecheck on host (Docker Compose plugin unavailable in this environment; see decision log).
-2. Commit focused changes and push `phase-10-stabilization`.
-3. Open a PR to `main` summarizing the fixes and evidence.
-4. After merge, return to feature prioritization (online client UI, tournament draw policy, production hardening).
+1. Run full verification (typecheck, tests, engine + server + web builds, iOS-app typecheck, Docker production image smoke test).
+2. Update `PROGRESS.md` and `docs/release.md` with CI/build details.
+3. Commit, push `phase-11-release-engineering`, and open PR to `main`.
+4. After merge, prioritise remaining shippable work: online client UI, tournament draw policy, or further production hardening.
 
 ## Decision log
 
@@ -32,6 +32,10 @@ Complete the stabilization branch and merge it:
 | 2026-08-16 | Terminal undo policy: undo is disallowed after a game is finished and scored | Accepted | Prevents double-scoring and score-reversal bugs. The session gains a `scored` flag; `startNextGame` resets it. This keeps scoring idempotent even if `advanceAITurns` is called again. |
 | 2026-08-16 | Room/seat transition table | Accepted | `createRoom` always creates a human host in seat A; `joinRoom` and `addAI` may fill seat B only from `lobby`; neither can replace an existing B. This removes the broken AI-host path and prevents seat takeover races. |
 | 2026-08-16 | Docker Compose plugin unavailable in this environment | Worked around | `docker compose` and `docker-compose` are not present, so verification runs on host tooling (`npm run typecheck`, `npm test`, `npm run web:build`, `cd ios-app && npm run typecheck`). Dependencies were installed with `npm install` on the host. This is a local-environment deviation from `AGENTS.md`; the branch still passes all checks. |
+| 2026-08-16 | Release engineering: compiled server artifact | Accepted | `tsconfig.server.json` + `npm run build:server` produces `dist-server/`. Production runtime uses `node dist-server/server/http.js` (`npm run serve:prod`); `npm run serve` remains the dev path via `tsx`. |
+| 2026-08-16 | Release engineering: production container image | Accepted | `Dockerfile.prod` is a slim multistage image that builds the server and runs it with production dependencies only. Verified by building and health-check smoke test. |
+| 2026-08-16 | Release engineering: stale-room sweep | Accepted | `MatchServer` supports an optional `sweepIntervalMs`. The production server defaults to 30s sweeps; set `SWEEP_INTERVAL_MS=0` to disable. Tests use `sweepIntervalMs: null` to avoid background timers. |
+| 2026-08-16 | Release engineering: CI | Accepted | `.github/workflows/ci.yml` runs typecheck, tests, engine/server/web builds, iOS-app typecheck, and a Docker production-image smoke test on pushes/PRs to `main`. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -74,12 +78,14 @@ Complete the stabilization branch and merge it:
 | 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
 | 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. These are now fixed on `phase-10-stabilization`. |
-| — | Post-roadmap stabilization | In progress | HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs are being fixed on `phase-10-stabilization`. Evidence: 111 tests pass, root + ios-app typecheck pass, web build passes. Production-artifact, CI, and online-client work remain after merge. |
+| — | Post-roadmap stabilization | Complete | Merged via PR #15. HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs fixed. Evidence: 113 tests pass, root + ios-app typecheck pass, web build passes. |
+| — | Release engineering | In progress | `phase-11-release-engineering`: compiled server artifact, production Dockerfile, stale-room sweeps, and GitHub Actions CI. Evidence: 113 tests pass, engine/server/web builds pass, iOS-app typecheck passes, production image builds and health-checks. Online-client and tournament draw work remain after merge. |
 
 ## Blockers
 
-- **Resolved in this branch:** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
-- **Remaining release-engineering blockers:** no built production server/runtime image, no CI, no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
+- **Resolved in stabilization (#15):** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
+- **Resolved in release engineering (in progress):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
+- **Remaining release-engineering blockers:** no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
 - **Online-product blockers:** neither shipped client consumes the server protocol, and `classic-v1` has no repetition draw for ranked/automated matches.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 

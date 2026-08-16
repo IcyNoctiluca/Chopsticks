@@ -5,8 +5,9 @@ import { FileRoomStore } from "./persistence.js";
 import { validateCreateRoomBody, validateJoinBody, validateAddAIBody, validateMoveBody } from "./validation.js";
 
 const ROOM_STORE_PATH = process.env.ROOM_STORE_PATH ?? "data/rooms.json";
+const SWEEP_INTERVAL_MS = process.env.SWEEP_INTERVAL_MS ? Number(process.env.SWEEP_INTERVAL_MS) : 30_000;
 const store = new FileRoomStore({ path: ROOM_STORE_PATH });
-const server = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 5 * 60_000, store });
+const server = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 5 * 60_000, sweepIntervalMs: SWEEP_INTERVAL_MS, store });
 const httpServer = createServer(handleRequest);
 const wsServer = new ChopsticksWSServer({ server: httpServer, matchServer: server });
 const PORT = Number(process.env.PORT ?? 3000);
@@ -110,6 +111,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   httpServer.listen(PORT, () => {
     console.log(`Chopsticks match server listening on :${PORT}`);
   });
+
+  function shutdown(): void {
+    console.log("Shutting down...");
+    wsServer.close();
+    httpServer.close(() => {
+      server.close();
+      process.exit(0);
+    });
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
 export { httpServer, server, wsServer };

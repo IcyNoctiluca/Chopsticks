@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build engine
+        run: npm run build
+
+      - name: Build server
+        run: npm run build:server
+
+      - name: Build web client
+        run: npm run web:build
+
+      - name: Typecheck iOS app
+        run: cd ios-app && npm run typecheck
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production image
+        run: docker build -f Dockerfile.prod -t chopsticks/server:latest .
+
+      - name: Smoke test production image
+        run: |
+          docker run -d --name chopsticks-smoke -p 3000:3000 chopsticks/server:latest
+          sleep 2
+          curl -fsS http://127.0.0.1:3000/health | grep -q '"status":"ok"'
+          docker stop chopsticks-smoke
+          docker rm chopsticks-smoke
