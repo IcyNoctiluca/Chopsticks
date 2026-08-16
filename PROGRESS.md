@@ -2,19 +2,19 @@
 
 ## Current state
 
-**Active phase:** Release engineering
+**Active phase:** Online client
 
-**Status:** Stabilization PR #15 is merged. Release-engineering work is in progress on `phase-11-release-engineering`: compiled server artifact (`npm run build:server` / `serve:prod`), production Dockerfile (`Dockerfile.prod`), automatic stale-room sweeps, and GitHub Actions CI. The production image builds and passes a health-check smoke test. Remaining: final verification, commit, push, and PR.
+**Status:** Online web client is in progress on `phase-12-online-client`. The client (`web/online.html` + `web/online.ts`) connects to the match server over WebSocket, supports creating/joining rooms, adding an AI opponent, and submitting moves. The local web client links to the online page. Remaining: final verification, commit, push, and PR.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-Complete the release-engineering branch and merge it:
+Complete the online-client branch and merge it:
 
-1. Run full verification (typecheck, tests, engine + server + web builds, iOS-app typecheck, Docker production image smoke test).
-2. Update `PROGRESS.md` and `docs/release.md` with CI/build details.
-3. Commit, push `phase-11-release-engineering`, and open PR to `main`.
-4. After merge, prioritise remaining shippable work: online client UI, tournament draw policy, or further production hardening.
+1. Run full verification (typecheck, tests, engine + server + web builds, iOS-app typecheck).
+2. Update `PROGRESS.md` and `docs/release.md` with client details.
+3. Commit, push `phase-12-online-client`, and open PR to `main`.
+4. After merge, assess shippability; remaining candidates are tournament draw policy, native iOS runtime test, and broader production hardening.
 
 ## Decision log
 
@@ -36,6 +36,7 @@ Complete the release-engineering branch and merge it:
 | 2026-08-16 | Release engineering: production container image | Accepted | `Dockerfile.prod` is a slim multistage image that builds the server and runs it with production dependencies only. Verified by building and health-check smoke test. |
 | 2026-08-16 | Release engineering: stale-room sweep | Accepted | `MatchServer` supports an optional `sweepIntervalMs`. The production server defaults to 30s sweeps; set `SWEEP_INTERVAL_MS=0` to disable. Tests use `sweepIntervalMs: null` to avoid background timers. |
 | 2026-08-16 | Release engineering: CI | Accepted | `.github/workflows/ci.yml` runs typecheck, tests, engine/server/web builds, iOS-app typecheck, and a Docker production-image smoke test on pushes/PRs to `main`. |
+| 2026-08-16 | Online web client | Accepted | A separate `web/online.html` + `web/online.ts` uses WebSocket to consume the server protocol. It reuses hand SVG/styles, supports create/join/add-ai/move, and auto-reconnects. The Vite build produces both `index.html` and `online.html` entries. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -79,14 +80,16 @@ Complete the release-engineering branch and merge it:
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
 | 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. These are now fixed on `phase-10-stabilization`. |
 | — | Post-roadmap stabilization | Complete | Merged via PR #15. HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs fixed. Evidence: 113 tests pass, root + ios-app typecheck pass, web build passes. |
-| — | Release engineering | In progress | `phase-11-release-engineering`: compiled server artifact, production Dockerfile, stale-room sweeps, and GitHub Actions CI. Evidence: 113 tests pass, engine/server/web builds pass, iOS-app typecheck passes, production image builds and health-checks. Online-client and tournament draw work remain after merge. |
+| — | Release engineering | Complete | Merged via PR #16. Compiled server artifact, production Dockerfile, stale-room sweeps, GitHub Actions CI. |
+| — | Online client | In progress | `phase-12-online-client`: web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. Evidence: 114 tests pass, all builds/typechecks pass. |
 
 ## Blockers
 
 - **Resolved in stabilization (#15):** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
-- **Resolved in release engineering (in progress):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
+- **Resolved in release engineering (#16):** compiled server artifact; production Docker image; stale-room sweep; GitHub Actions CI.
+- **Resolved in online client (in progress):** a shipped web client consumes the server protocol.
 - **Remaining release-engineering blockers:** no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
-- **Online-product blockers:** neither shipped client consumes the server protocol, and `classic-v1` has no repetition draw for ranked/automated matches.
+- **Product blockers:** `classic-v1` has no repetition draw for ranked/automated matches; native iOS app is not runtime-tested.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)

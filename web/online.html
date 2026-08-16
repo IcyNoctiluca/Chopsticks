@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Chopsticks — Online</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" aria-live="polite">
+      <h1>Chopsticks Online</h1>
+      <p id="status" aria-live="assertive">Connect to a match server to play online.</p>
+
+      <section id="lobby" class="lobby">
+        <div class="lobby-row">
+          <button id="btn-create" type="button">Create room</button>
+        </div>
+        <div class="lobby-row">
+          <input id="room-code" type="text" placeholder="Room code" aria-label="Room code" />
+          <button id="btn-join" type="button">Join room</button>
+        </div>
+        <button id="btn-add-ai" type="button" hidden>Add AI opponent</button>
+      </section>
+
+      <section id="game" hidden>
+        <section id="board" aria-label="Game board">
+          <div id="hands-b" class="player" data-player="B"></div>
+          <div class="divider"></div>
+          <div id="hands-a" class="player" data-player="A"></div>
+        </section>
+        <section id="moves" aria-label="Legal moves"></section>
+        <nav id="controls">
+          <button id="btn-leave" type="button">Leave room</button>
+        </nav>
+      </section>
+    </main>
+    <script type="module" src="./online.ts"></script>
+  </body>
+</html>
