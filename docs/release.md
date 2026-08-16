@@ -126,6 +126,9 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - `PORT` (default `3000`) — listen port.
 - `ROOM_STORE_PATH` (default `data/rooms.json`) — path to the file-backed room store.
 - `SWEEP_INTERVAL_MS` (default `30000`) — interval at which stale rooms are checked; set to `0` to disable automatic sweeps.
+- `ROOM_TTL_MS` (default `86400000` = 24h) — how long finished/abandoned rooms are kept before deletion.
+- `MAX_BODY_BYTES` (default `16384`) — maximum HTTP request body size.
+- `RATE_LIMIT_WINDOW_MS` (default `60000`) and `RATE_LIMIT_MAX` (default `60`) — per-IP rate-limiting window and request cap.
 - No secrets are required by the MVP. No API keys or credentials are read.
 
 **Health check:** `GET /health` returns `200` `{ status: "ok", engine, rulesets }`. Configure the orchestrator's readiness/liveness probe against it.
@@ -148,7 +151,7 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - [x] An online web client consumes the server protocol to create/join rooms and play human vs human or human vs AI.
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 122 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
+- [x] Containerised development; reproducible builds; 128 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
 
 **Known limitations / follow-ups (out of MVP scope):**
 - iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
