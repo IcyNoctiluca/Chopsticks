@@ -202,10 +202,22 @@ describe("MatchServer: AI and abandoned games", () => {
     const r2 = s.createRoom({ clientId: "carol", displayName: "Carol" });
     s.joinRoom(r1.roomCode, "bob", "Bob");
     s.joinRoom(r2.roomCode, "dave", "Dave");
-    const abandoned = s.sweepStaleRooms(Date.now() + 1000);
+    const { abandoned } = s.sweepStaleRooms(Date.now() + 1000);
     expect(abandoned.sort()).toEqual([r1.roomCode, r2.roomCode].sort());
     expect(() => s.sync(r1.roomCode, "alice")).toThrow(MatchServerError);
     expect(() => s.sync(r2.roomCode, "carol")).toThrow(MatchServerError);
+  });
+
+  it("sweepStaleRooms removes finished/abandoned rooms after TTL", () => {
+    const s = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 10, sweepIntervalMs: null, roomTTLMs: 100 });
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    s.joinRoom(r.roomCode, "bob", "Bob");
+    const t1 = Date.now() + 20;
+    s.sweepStaleRooms(t1); // abandon
+    expect(() => s.sync(r.roomCode, "alice")).toThrow(MatchServerError);
+    const t2 = t1 + 200;
+    s.sweepStaleRooms(t2); // remove after TTL
+    expect(s.listRooms()).not.toContain(r.roomCode);
   });
 });
 
@@ -255,6 +267,24 @@ describe("MatchServer: room phase / seat transitions", () => {
     const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
     s.joinRoom(r.roomCode, "bob", "Bob");
     expect(() => s.joinRoom(r.roomCode, "carol", "Carol")).toThrow(MatchServerError);
+  });
+});
+
+describe("MatchServer: production hardening", () => {
+  it("rejects an oversized request body", async () => {
+    const { httpServer, server } = await import("../server/http.js");
+    void server;
+    const port = await new Promise<number>((resolve) => {
+      httpServer.listen(0, "127.0.0.1", () => resolve((httpServer.address() as { port: number }).port));
+    });
+    const huge = JSON.stringify({ clientId: "a".repeat(32_000), displayName: "x" });
+    const res = await fetch(`http://127.0.0.1:${port}/rooms`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: huge,
+    });
+    expect(res.status).toBe(400);
+    await new Promise<void>((r) => httpServer.close(() => r()));
   });
 });
 

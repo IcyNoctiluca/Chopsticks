@@ -232,3 +232,23 @@ h1 {
   cursor: pointer;
 }
 .lobby button:hover { border-color: var(--accent); }
+
+.room-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.room-info button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.room-info button:hover { border-color: var(--accent); }

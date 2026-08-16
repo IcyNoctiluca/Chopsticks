@@ -58,7 +58,9 @@ export type ServerError =
   | "incompatible-engine-version"
   | "room-full"
   | "invalid-request"
-  | "ai-host-not-allowed";
+  | "ai-host-not-allowed"
+  | "payload-too-large"
+  | "rate-limited";
 
 export class MatchServerError extends Error {
   readonly code: ServerError;
@@ -81,6 +83,7 @@ export interface MatchServerOptions {
   readonly moveTimeoutMs?: number | null;
   readonly abandonedAfterMs?: number;
   readonly sweepIntervalMs?: number | null;
+  readonly roomTTLMs?: number | null;
   readonly store?: RoomStore;
 }
 
@@ -90,6 +93,7 @@ export class MatchServer {
   private readonly moveTimeoutMs: number | null;
   private readonly abandonedAfterMs: number;
   private readonly sweepIntervalMs: number | null;
+  private readonly roomTTLMs: number | null;
   private readonly store: RoomStore | null;
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -97,6 +101,7 @@ export class MatchServer {
     this.moveTimeoutMs = options.moveTimeoutMs ?? null;
     this.abandonedAfterMs = options.abandonedAfterMs ?? 60000;
     this.sweepIntervalMs = options.sweepIntervalMs ?? null;
+    this.roomTTLMs = options.roomTTLMs ?? 24 * 60 * 60 * 1000;
     this.store = options.store ?? null;
     this.hydrate();
     this.startSweep();
@@ -114,14 +119,23 @@ export class MatchServer {
     this.sweepTimer = setInterval(() => this.sweepStaleRooms(), this.sweepIntervalMs);
   }
 
-  sweepStaleRooms(now = Date.now()): RoomCode[] {
+  sweepStaleRooms(now = Date.now()): { abandoned: RoomCode[]; removed: RoomCode[] } {
     const abandoned: RoomCode[] = [];
+    const removed: RoomCode[] = [];
     for (const code of this.rooms.keys()) {
+      const room = this.rooms.get(code);
+      if (!room) continue;
+      if (this.roomTTLMs !== null && (room.phase === "finished" || room.phase === "abandoned") && now - room.createdAt >= this.roomTTLMs) {
+        this.rooms.delete(code);
+        this.persist(code);
+        removed.push(code);
+        continue;
+      }
       if (this.abandonIfStale(code, now)) {
         abandoned.push(code);
       }
     }
-    return abandoned;
+    return { abandoned, removed };
   }
 
   private hydrate(): void {
