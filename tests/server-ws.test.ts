@@ -187,4 +187,27 @@ describe("Chopsticks WebSocket transport", () => {
     expect(synced.phase).toBe("lobby");
     ws.close();
   });
+
+  it("rejects a malformed move at the transport boundary", async () => {
+    const ws = new WebSocket(env.url);
+    const q = createMessageQueue(ws);
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", resolve);
+      ws.once("error", reject);
+    });
+
+    send(ws, { type: "create", clientId: "alice", displayName: "Alice" });
+    const created = await q.waitFor("created");
+    const roomCode = created.roomCode as string;
+    await q.waitFor("state");
+
+    send(ws, { type: "add-ai", roomCode, difficulty: "random" });
+    await q.waitFor("ai-added");
+    await q.waitFor("state");
+
+    send(ws, { type: "move", roomCode, clientId: "alice", move: { type: "tap", player: "A" }, expectedMoveNumber: 0 });
+    const err = await q.waitFor("error");
+    expect(err.code).toBe("invalid-request");
+    ws.close();
+  });
 });

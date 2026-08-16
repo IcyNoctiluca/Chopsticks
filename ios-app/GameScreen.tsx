@@ -77,8 +77,8 @@ export function GameScreen(): React.ReactElement {
 
   const onRestart = useCallback(() => {
     setSession((prev) => {
-      const cfg = aiForB ? makeConfig(true) : makeConfig(false);
-      const next = { ...prev, currentRecord: startNextGame(prev).currentRecord, undoCount: 0, config: cfg };
+      const cfg = makeConfig(aiForB);
+      const next = { ...startNextGame(prev), config: cfg };
       return advanceAITurns(next);
     });
   }, [aiForB]);

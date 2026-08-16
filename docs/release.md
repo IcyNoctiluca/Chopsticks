@@ -35,7 +35,7 @@ Client → server:
 
 | Type | Fields | Purpose |
 | --- | --- | --- |
-| `create` | `clientId`, `displayName`, optional `rulesetId`, `moveTimeoutMs`, `isAI`, `aiDifficulty` | Create a room |
+| `create` | `clientId`, `displayName`, optional `rulesetId`, `moveTimeoutMs` | Create a room (host must be human) |
 | `join` | `roomCode`, `clientId`, `displayName` | Join a room as player B |
 | `add-ai` | `roomCode`, optional `difficulty` | Add an AI opponent as player B |
 | `move` | `roomCode`, `clientId`, `move`, `expectedMoveNumber` | Submit an intended move |
@@ -56,7 +56,13 @@ Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
 
 ## Persistence
 
-Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence.ts`). By default the server writes to `data/rooms.json`; set `ROOM_STORE_PATH` to use a different location. The store is loaded when `MatchServer` starts and updated after every room mutation. For production at scale, swap `FileRoomStore` for a Redis/DB-backed implementation behind the same `RoomStore` interface.
+Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence.ts`). By default the server writes to `data/rooms.json`; set `ROOM_STORE_PATH` to use a different location. The store is loaded when `MatchServer` starts and updated after every room mutation.
+
+**Retention semantics (MVP):**
+- Room data is kept until the process removes the room or the store file is deleted.
+- No automatic expiration of the store file itself; abandoned rooms remain in the file until an operator deletes it or a future cleanup policy is added.
+- `displayName` values are persisted alongside room state; they are not personal data but are written to disk.
+- For production at scale, swap `FileRoomStore` for a Redis/DB-backed implementation behind the same `RoomStore` interface and add an explicit retention/TTL policy.
 
 ## Server-authoritative guarantees (client cannot alter state)
 
@@ -76,10 +82,10 @@ These are covered by integration tests in `tests/server.test.ts`, `tests/server-
 
 ## Privacy
 
-- The MVP collects **no personal data** beyond the optional `displayName` a player provides when creating/joining a room. Display names are ephemeral and held only in memory for the duration of a room.
+- The MVP collects **no personal data** beyond the optional `displayName` a player provides when creating/joining a room. Display names are written to the configured `RoomStore` (default `data/rooms.json`) for the lifetime of the room; see the Persistence section for retention semantics.
 - **No accounts, no email, no device identifiers, no tracking, no advertising SDKs.** The `clientId` is an opaque token the client generates locally; it is never linked to an identity.
 - **No analytics are shipped in the MVP.** The metrics section below describes optional, opt-in analytics planned for a later release; none are emitted by this version.
-- Move history is game state only (hand taps/splits) and contains nothing personal. Rooms are in-memory and are discarded when the process restarts; no persistent user storage exists in the MVP.
+- Move history is game state only (hand taps/redistributions) and contains nothing personal. Rooms are persisted to the configured store and survive process restarts; delete the store file (or replace the store implementation) to remove retained data.
 - **Transport:** deploy behind HTTPS (TLS termination at the load balancer/reverse proxy) so display names and game traffic are encrypted in transit. The MVP server itself is HTTP-only and must never be exposed directly to the public internet unencrypted.
 
 ## Failure handling
@@ -87,7 +93,7 @@ These are covered by integration tests in `tests/server.test.ts`, `tests/server-
 | Failure | MVP behaviour |
 | --- | --- |
 | Client disconnects mid-game | Room stays open; other player may wait. On reconnect, `/sync` resynchronises. |
-| Server process restarts | In-memory rooms are lost (acceptable for MVP). Both clients must create a new room. A persistent store is a post-MVP follow-up (see below). |
+| Server process restarts | Rooms are reloaded from the configured `RoomStore`; in-progress matches resume. Clients reconnect with `/sync`. |
 | Illegal/stale/not-your-turn submit | Server returns a `MatchServerError` with a `code`; client re-syncs via `/sync` and retries. No state changes. |
 | Room not found / full / finished / abandoned | Server returns a typed error; client surfaces an appropriate message. |
 | AI opponent | Runs server-side via the engine's `getLegalMoves`/`applyMove`; deterministic difficulty; failure is impossible (always a legal move while the game is non-terminal). |
@@ -100,10 +106,11 @@ The server is a standalone `node:http` process with no external dependencies, wh
 **Container image (recommended):**
 1. Build a runtime image from `Dockerfile` (already present for dev; for production use a slim multistage that copies `dist/` and runs `node dist/index.js` for the engine + `tsx server/http.ts`, or pre-compile the server).
 2. Run with `PORT` environment variable: `docker run -e PORT=3000 -p 3000:3000 chopsticks/server`.
-3. Place behind a TLS-terminating reverse proxy (e.g. Caddy, nginx, or a cloud load balancer) and scale horizontally. Rooms are in-memory, so for MVP use a single replica or sticky sessions; horizontal scaling with shared room state needs Redis or a persistent store (post-MVP).
+3. Place behind a TLS-terminating reverse proxy (e.g. Caddy, nginx, or a cloud load balancer). `FileRoomStore` is single-node only; for MVP run a single replica or swap to a shared `RoomStore` implementation (Redis/DB) before scaling horizontally.
 
 **Environment variables:**
 - `PORT` (default `3000`) — listen port.
+- `ROOM_STORE_PATH` (default `data/rooms.json`) — path to the file-backed room store.
 - No secrets are required by the MVP. No API keys or credentials are read.
 
 **Health check:** `GET /health` returns `200` `{ status: "ok", engine, rulesets }`. Configure the orchestrator's readiness/liveness probe against it.
@@ -119,18 +126,17 @@ The server is a standalone `node:http` process with no external dependencies, wh
 
 - [x] Engine frozen at `classic-v1` v1.0, engine `0.1.0`, with deterministic replay (Phase 04/05).
 - [x] Clients cannot authoritatively alter state (server validates every move via the engine) — integration tested.
-- [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`).
+- [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`, `tests/server-ws.test.ts`).
 - [x] A local app (web) lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 89 automated tests passing.
+- [x] Containerised development; reproducible builds; 112 automated tests passing.
 
 **Known limitations / follow-ups (out of MVP scope):**
-- iOS React Native app (requires a macOS build environment; web client ships instead).
-- Persistent room/match history across server restarts (Redis or a database).
+- iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
 - Draw-by-repetition / move cap for ranked online play (a `classic-tournament-v1` variant or server-side match policy — see `docs/analysis.md`).
-- Real-time WebSocket transport (HTTP request/response is used for the MVP; a WS layer wraps the same `MatchServer` later).
 - Rate limiting / abuse protection at the edge.
+- Production-grade shared room state: `FileRoomStore` is single-node; horizontal scaling needs a Redis/DB-backed `RoomStore`.
 
 ## Post-launch metrics (opt-in, planned — NOT active in MVP)
 
