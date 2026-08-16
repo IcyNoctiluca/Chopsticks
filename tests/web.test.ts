@@ -40,6 +40,16 @@ describe("web build artifact", () => {
     expect(html).toContain("Chopsticks Online");
     expect(html).toMatch(/assets\/online-.*\.js/);
   });
+
+  it("dist-web contains PWA manifest, service worker, and icons", () => {
+    expect(existsSync(resolve(distWeb, "manifest.json"))).toBe(true);
+    expect(existsSync(resolve(distWeb, "sw.js"))).toBe(true);
+    expect(existsSync(resolve(distWeb, "icon-192.png"))).toBe(true);
+    expect(existsSync(resolve(distWeb, "icon-512.png"))).toBe(true);
+    const html = readFileSync(resolve(distWeb, "index.html"), "utf8");
+    expect(html).toContain('rel="manifest"');
+    expect(html).toContain('name="theme-color"');
+  });
 });
 
 describe("web client local game flow (two humans via session API)", () => {

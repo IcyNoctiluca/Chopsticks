@@ -17,6 +17,9 @@ let aiForB = false;
 window.addEventListener("DOMContentLoaded", main);
 
 function main(): void {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => void 0);
+  }
   render();
   document.getElementById("btn-undo")!.addEventListener("click", onUndo);
   document.getElementById("btn-restart")!.addEventListener("click", onRestart);
