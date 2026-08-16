@@ -45,7 +45,7 @@ function onUndo(): void {
 }
 
 function onRestart(): void {
-  session = { ...session, currentRecord: startNextGame(session).currentRecord, undoCount: 0 };
+  session = startNextGame(session);
   session = advanceAITurns(session);
   render();
 }

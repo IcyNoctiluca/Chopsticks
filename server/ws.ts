@@ -8,6 +8,7 @@ import {
   type MatchPhase,
 } from "./matchServer.js";
 import type { GameState, Move, PlayerId, RulesetId } from "../src/index.js";
+import { validateCreateRoomBody, validateJoinBody, validateAddAIBody, validateMoveBody, requireString } from "./validation.js";
 
 export interface WSServerOptions {
   readonly server: Server;
@@ -16,7 +17,7 @@ export interface WSServerOptions {
 }
 
 type ClientMessage =
-  | { type: "create"; clientId: ClientId; displayName: string; rulesetId?: RulesetId; moveTimeoutMs?: number; isAI?: boolean; aiDifficulty?: "random" | "heuristic" | "solved" }
+  | { type: "create"; clientId: ClientId; displayName: string; rulesetId?: RulesetId; moveTimeoutMs?: number }
   | { type: "join"; roomCode: RoomCode; clientId: ClientId; displayName: string }
   | { type: "add-ai"; roomCode: RoomCode; difficulty?: "random" | "heuristic" | "solved" }
   | { type: "move"; roomCode: RoomCode; clientId: ClientId; move: Move; expectedMoveNumber: number }
@@ -84,36 +85,37 @@ export class ChopsticksWSServer {
   private handleMessage(ws: WebSocket, msg: ClientMessage): void {
     switch (msg.type) {
       case "create": {
-        const result = this.matchServer.createRoom(
-          { clientId: msg.clientId, displayName: msg.displayName, isAI: msg.isAI, aiDifficulty: msg.aiDifficulty },
-          { rulesetId: msg.rulesetId, moveTimeoutMs: msg.moveTimeoutMs },
-        );
-        this.sockets.set(ws, { roomCode: result.roomCode, clientId: msg.clientId });
+        const params = validateCreateRoomBody(msg);
+        const result = this.matchServer.createRoom(params.host, params.options);
+        this.sockets.set(ws, { roomCode: result.roomCode, clientId: params.host.clientId });
         this.send(ws, { type: "created", roomCode: result.roomCode, playerId: result.playerId, state: result.state });
         this.broadcastState(result.roomCode);
         break;
       }
       case "join": {
-        const result = this.matchServer.joinRoom(msg.roomCode, msg.clientId, msg.displayName);
-        this.sockets.set(ws, { roomCode: msg.roomCode, clientId: msg.clientId });
+        const params = validateJoinBody(msg);
+        const result = this.matchServer.joinRoom(msg.roomCode, params.clientId, params.displayName);
+        this.sockets.set(ws, { roomCode: msg.roomCode, clientId: params.clientId });
         this.send(ws, { type: "joined", roomCode: msg.roomCode, playerId: result.playerId, state: result.state, history: result.history });
         this.broadcastState(msg.roomCode);
         break;
       }
       case "add-ai": {
-        const result = this.matchServer.addAI(msg.roomCode, msg.difficulty ?? "random");
+        const difficulty = validateAddAIBody(msg);
+        const result = this.matchServer.addAI(msg.roomCode, difficulty);
         this.send(ws, { type: "ai-added", roomCode: msg.roomCode, playerId: result.playerId });
         this.broadcastState(msg.roomCode);
         break;
       }
       case "move": {
-        const result = this.matchServer.submitMove(msg.roomCode, msg.clientId, msg.move, msg.expectedMoveNumber);
+        const params = validateMoveBody(msg);
+        const result = this.matchServer.submitMove(msg.roomCode, params.clientId, params.move, params.expectedMoveNumber);
         this.send(ws, { type: "move-accepted", roomCode: msg.roomCode, state: result.state, moveNumber: result.moveNumber, winner: result.winner });
         this.broadcastState(msg.roomCode);
         break;
       }
       case "sync": {
-        const result = this.matchServer.sync(msg.roomCode, msg.clientId);
+        const result = this.matchServer.sync(msg.roomCode, requireString(msg.clientId, "clientId") as ClientId);
         this.send(ws, {
           type: "state",
           roomCode: msg.roomCode,

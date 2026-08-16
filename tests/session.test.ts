@@ -163,6 +163,73 @@ describe("MatchSession: persistence", () => {
   });
 });
 
+describe("MatchSession: terminal scoring idempotency", () => {
+  it("scores a finished game exactly once even if advanceAITurns is called again", () => {
+    const aiVsAi: MatchConfig = {
+      playerA: { name: "CPU1", type: "ai", aiDifficulty: "random" },
+      playerB: { name: "CPU2", type: "ai", aiDifficulty: "random" },
+      undoPolicy: "none",
+      moveTimerMs: null,
+      gamesToWin: 1,
+    };
+    let s = createSession(aiVsAi);
+    s = advanceAITurns(s);
+    expect(getState(s).status).toBe("finished");
+    expect(s.gamesPlayed).toBe(1);
+    const scores = { ...s.scores };
+    s = advanceAITurns(s);
+    expect(s.gamesPlayed).toBe(1);
+    expect(s.scores).toEqual(scores);
+  });
+
+  it("prevents undo after a game is finished and scored", () => {
+    const aiVsAi: MatchConfig = {
+      playerA: { name: "CPU1", type: "ai", aiDifficulty: "random" },
+      playerB: { name: "CPU2", type: "ai", aiDifficulty: "random" },
+      undoPolicy: "unlimited",
+      moveTimerMs: null,
+      gamesToWin: 1,
+    };
+    let s = createSession(aiVsAi);
+    s = advanceAITurns(s);
+    expect(s.scored).toBe(true);
+    expect(canUndoInSession(s)).toBe(false);
+    expect(() => undoInSession(s)).toThrow();
+  });
+
+  it("prevents further moves after a game is scored", () => {
+    const aiVsAi: MatchConfig = {
+      playerA: { name: "CPU1", type: "ai", aiDifficulty: "random" },
+      playerB: { name: "CPU2", type: "ai", aiDifficulty: "random" },
+      undoPolicy: "none",
+      moveTimerMs: null,
+      gamesToWin: 1,
+    };
+    let s = createSession(aiVsAi);
+    s = advanceAITurns(s);
+    const finished = s;
+    const anyMove = getLegalMoves(getState(finished))[0]!;
+    s = playHumanMove(s, anyMove);
+    expect(s.currentRecord.moves.length).toBe(finished.currentRecord.moves.length);
+  });
+
+  it("resets scored flag when starting the next game", () => {
+    const aiVsAi: MatchConfig = {
+      playerA: { name: "CPU1", type: "ai", aiDifficulty: "random" },
+      playerB: { name: "CPU2", type: "ai", aiDifficulty: "random" },
+      undoPolicy: "none",
+      moveTimerMs: null,
+      gamesToWin: 3,
+    };
+    let s = createSession(aiVsAi);
+    s = advanceAITurns(s);
+    expect(s.scored).toBe(true);
+    s = startNextGame(s);
+    expect(s.scored).toBe(false);
+    expect(getState(s).status).not.toBe("finished");
+  });
+});
+
 describe("Session does not leak into engine", () => {
   it("session module imports the engine, not vice versa", async () => {
     const engineSrc = await import("../src/index.js");
