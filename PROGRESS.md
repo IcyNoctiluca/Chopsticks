@@ -2,20 +2,19 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap stabilization review
+**Active phase:** Post-roadmap stabilization
 
-**Status:** Historical phases 00–07 and post-roadmap features are merged. A 2026-08-16 repository review verified root typecheck, all 101 tests, the engine build, and the web build after synchronising the container dependency volume with `npm ci`. The engine/local-play foundation is healthy, but the production/shippable claim is superseded: HTTP reconnect, terminal undo/scoring, client starter rotation, and room/AI transitions have reproducible defects; release/privacy documentation is stale after persistence; and the documented iOS typecheck fails. See `docs/handoff.md` for evidence, severity, and exact pickup order.
+**Status:** Stabilization PR in progress on branch `phase-10-stabilization`. The defects identified in the 2026-08-16 review are being addressed: terminal scoring is now idempotent and terminal undo is prohibited; web/iOS restart preserves alternating starters; room/seat transitions are enforced and AI hosts are rejected; HTTP sync routing handles query strings; transport inputs are validated; iOS entry typechecks after adding the missing `react-native-safe-area-context` dependency; release/privacy docs are reconciled with file persistence. Remaining before the PR: full verification pass, commit, push, and open PR to `main`.
 **Last updated:** 2026-08-16
 
 ## Next action
 
-Stabilize the merged product before starting optional feature work:
+Complete the stabilization branch and merge it:
 
-1. **Session/client correctness** — make terminal scoring idempotent, decide terminal-undo behavior, and preserve alternating starters in web/iOS clients.
-2. **Server state and transport correctness** — enforce room/seat transitions, start AI hosts correctly, fix HTTP sync routing, and validate untrusted inputs.
-3. **Release truthfulness** — decide persistence retention/cleanup and reconcile privacy, failure, deployment, test-count, and support documentation.
-4. **Verification/release artifact** — restore a real iOS-app typecheck/test path, build the server without `tsx`, and add CI.
-5. **Then choose feature work** — online client UI, tournament draw policy/ruleset, native polish, and broader production hardening.
+1. Run full typecheck, engine tests, web build, and iOS-app typecheck on host (Docker Compose plugin unavailable in this environment; see decision log).
+2. Commit focused changes and push `phase-10-stabilization`.
+3. Open a PR to `main` summarizing the fixes and evidence.
+4. After merge, return to feature prioritization (online client UI, tournament draw policy, production hardening).
 
 ## Decision log
 
@@ -30,6 +29,9 @@ Stabilize the merged product before starting optional feature work:
 | 2026-08-15 | Phase 06 local app = web client (Vite, vanilla TS) instead of React Native/iOS | Accepted | Engine is TS shared via RN for iOS per the tooling decision, but iOS RN cannot build/test inside the Linux dev container (no Xcode/simulator). MVP local app shipped as a browser web client using the same engine/session APIs; genuinely two-player and shippable. React Native iOS app is a follow-up once a macOS/iOS build environment is available. Logged as a worked-around blocker below. |
 | 2026-08-15 | Phase 07 transport = HTTP request/response (not WebSocket) for MVP | Accepted | A framework-free `MatchServer` authoritative module + thin `node:http` wrapper. WS real-time transport wraps the same `MatchServer` later; HTTP MVP keeps the failure surface small and is fully testable. |
 | 2026-08-15 | Web UI polish scope: reusable SVG hand assets only, no DOM/CSS animation rigging | Accepted | Most realistic-UI code (DOM layout, CSS transitions, `window`/`document`) won't port to React Native and would be rebuilt. SVG hand assets transfer to RN via `react-native-svg`, so those are a worthwhile investment; animation and layout rigging are deferred to the native app. Lowest-waste path to a nicer-looking web MVP while keeping the real iOS target in view. |
+| 2026-08-16 | Terminal undo policy: undo is disallowed after a game is finished and scored | Accepted | Prevents double-scoring and score-reversal bugs. The session gains a `scored` flag; `startNextGame` resets it. This keeps scoring idempotent even if `advanceAITurns` is called again. |
+| 2026-08-16 | Room/seat transition table | Accepted | `createRoom` always creates a human host in seat A; `joinRoom` and `addAI` may fill seat B only from `lobby`; neither can replace an existing B. This removes the broken AI-host path and prevents seat takeover races. |
+| 2026-08-16 | Docker Compose plugin unavailable in this environment | Worked around | `docker compose` and `docker-compose` are not present, so verification runs on host tooling (`npm run typecheck`, `npm test`, `npm run web:build`, `cd ios-app && npm run typecheck`). Dependencies were installed with `npm install` on the host. This is a local-environment deviation from `AGENTS.md`; the branch still passes all checks. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -71,15 +73,15 @@ Stabilize the merged product before starting optional feature work:
 | 04 - Analysis and rules freeze | Complete | `analysis/enumerate.ts` + `docs/analysis.md`: 1142 reachable states, opening value DRAW, no first-player advantage, 510 WIN / 136 LOSS / 496 DRAW states, min 5 / max-shortest 8 moves. `classic-v1` frozen at doc v1.0, engine 0.1.0. Analysis regression test in `tests/analysis.test.ts`. |
 | 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
-| 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. |
-| — | Post-roadmap stabilization | Required | WebSocket and file persistence are merged; the iOS shell has historical simulator-build evidence. Correctness, documentation, iOS verification, and production-artifact blockers are listed in `docs/handoff.md`. Tournament draw handling and an online client remain unimplemented. |
+| 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. These are now fixed on `phase-10-stabilization`. |
+| — | Post-roadmap stabilization | In progress | HTTP sync, terminal scoring/undo, client starter rotation, room/AI transitions, transport validation, iOS typecheck, and release/privacy docs are being fixed on `phase-10-stabilization`. Evidence: 111 tests pass, root + ios-app typecheck pass, web build passes. Production-artifact, CI, and online-client work remain after merge. |
 
 ## Blockers
 
-- **Current stabilization blockers:** terminal undo can double-award scores; web/iOS restart discards starter rotation; documented HTTP sync returns 404; room/AI seat transitions can replace an active AI or strand an AI host; release/privacy documentation contradicts file persistence. These are reproduced and prioritised in `docs/handoff.md`.
-- **Release-engineering blockers:** no built production server/runtime image, no CI, no runtime input schema/size validation, and no reliable typecheck/test of the actual iOS entry component.
+- **Resolved in this branch:** terminal undo double-score; web/iOS starter rotation loss; HTTP sync 404 on query strings; room/AI transition gaps; transport input validation; iOS entry typecheck; stale release/privacy docs.
+- **Remaining release-engineering blockers:** no built production server/runtime image, no CI, no automated iOS runtime test, and no production-grade shared room store for horizontal scaling.
 - **Online-product blockers:** neither shipped client consumes the server protocol, and `classic-v1` has no repetition draw for ranked/automated matches.
-- **Resolved historical blocker:** the iOS React Native shell built and ran on the simulator on 2026-08-15. Its Metro resolver maps shared-source `.js` imports to TypeScript and prefers `ios-native/node_modules`; preserve these behaviors. The current iOS verification gap is separate from that historical build success.
+- **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
 ## Playtest findings (Phase 03)
 
