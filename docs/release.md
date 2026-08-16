@@ -16,6 +16,12 @@ The server is the single authority. Clients submit intended moves; the server lo
 
 `server/http.ts` exposes a small JSON API over `node:http` and a WebSocket endpoint at `/ws` for real-time play.
 
+## Clients
+
+- **Local web client** (`web/index.html`): two-player or human-vs-AI matches running entirely in the browser using the shared engine/session APIs. Build with `npm run web:build`.
+- **Online web client** (`web/online.html`): connects to the match server over WebSocket to create/join rooms and play human-vs-human or human-vs-AI matches. Set `VITE_SERVER_URL=wss://your-server/ws` at build time to point to a remote server; defaults to the same-origin `/ws`.
+- **iOS React Native app** (`ios-app/`): shares the engine/session APIs and typechecks; requires a macOS/Xcode environment for device/simulator builds.
+
 ### HTTP endpoints
 
 | Method | Path | Purpose |
@@ -134,7 +140,8 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - [x] Engine frozen at `classic-v1` v1.0, engine `0.1.0`, with deterministic replay (Phase 04/05).
 - [x] Clients cannot authoritatively alter state (server validates every move via the engine) — integration tested.
 - [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`, `tests/server-ws.test.ts`).
-- [x] A local app (web) lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
+- [x] A local web app lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
+- [x] An online web client consumes the server protocol to create/join rooms and play human vs human or human vs AI.
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
 - [x] Containerised development; reproducible builds; 113 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
