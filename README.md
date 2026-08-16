@@ -28,7 +28,8 @@ Containerised development keeps tooling off your host. Start the runtime once, t
 ```sh
 colima start                 # start the container runtime
 docker compose up -d         # start the dev container
-docker compose exec dev npm test          # 71 tests
+docker compose exec dev npm ci            # refresh the named dependency volume after manifest changes
+docker compose exec dev npm test          # 101 tests
 docker compose exec dev npm run typecheck
 docker compose exec dev npm run web       # local web app at http://localhost:5173
 docker compose run --rm -it dev npm run play   # interactive CLI

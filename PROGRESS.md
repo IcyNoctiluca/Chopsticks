@@ -2,19 +2,20 @@
 
 ## Current state
 
-**Active phase:** Post-roadmap — MVP-plus shippable; follow-ups remain
+**Active phase:** Post-roadmap stabilization review
 
-**Status:** All phases 00–07 complete (MVP shippable). Post-roadmap deliverables merged: web polish (PR #7), iOS native shell (PR #8), WebSocket transport (PRs #10/#11), and file-backed room persistence (PR #12). The server now supports HTTP + WebSocket, authoritative moves, AI opponents, and restart-safe rooms. The iOS app builds and runs on the simulator with SVG hands, legal moves, AI toggle, rules modal, and safe-area layout. Tests pass (101/101).
-**Last updated:** 2026-08-15
+**Status:** Historical phases 00–07 and post-roadmap features are merged. A 2026-08-16 repository review verified root typecheck, all 101 tests, the engine build, and the web build after synchronising the container dependency volume with `npm ci`. The engine/local-play foundation is healthy, but the production/shippable claim is superseded: HTTP reconnect, terminal undo/scoring, client starter rotation, and room/AI transitions have reproducible defects; release/privacy documentation is stale after persistence; and the documented iOS typecheck fails. See `docs/handoff.md` for evidence, severity, and exact pickup order.
+**Last updated:** 2026-08-16
 
 ## Next action
 
-The product is shippable as an MVP-plus. Remaining non-blocking follow-ups (pick one to continue):
+Stabilize the merged product before starting optional feature work:
 
-1. **Tournament draw rule** (`classic-tournament-v1`) — detect repeated positions and declare a draw for ranked online play.
-2. **Native iOS polish** — animations, haptics, deeper accessibility refinements.
-3. **Client-side online play UI** — web/iOS screens that connect to the WebSocket/HTTP server.
-4. **Production hardening** — rate limiting, input validation, structured logging, health checks.
+1. **Session/client correctness** — make terminal scoring idempotent, decide terminal-undo behavior, and preserve alternating starters in web/iOS clients.
+2. **Server state and transport correctness** — enforce room/seat transitions, start AI hosts correctly, fix HTTP sync routing, and validate untrusted inputs.
+3. **Release truthfulness** — decide persistence retention/cleanup and reconcile privacy, failure, deployment, test-count, and support documentation.
+4. **Verification/release artifact** — restore a real iOS-app typecheck/test path, build the server without `tsx`, and add CI.
+5. **Then choose feature work** — online client UI, tournament draw policy/ruleset, native polish, and broader production hardening.
 
 ## Decision log
 
@@ -25,7 +26,7 @@ The product is shippable as an MVP-plus. Remaining non-blocking follow-ups (pick
 | 2026-08-14 | Ruleset specification `classic-v1` (doc v0.1) | Accepted | `docs/rules-v0.1.md` answers all Phase 00 questions; linked from README. Draft pending freeze in Phase 04. |
 | 2026-08-14 | Engine tooling: TypeScript + Vitest, shared via React Native for iOS | Accepted | One engine across web/server/CLI/iOS; matches DESIGN.md single-engine rule. Zero runtime deps. |
 | 2026-08-15 | Freeze `classic-v1` at doc v1.0, engine 0.1.0 | Accepted | Phase 04 retrograde analysis (`docs/analysis.md`): opening value DRAW, no first-player advantage, 1142 reachable states. Behaviour unchanged from v0.1 draft. No draw rule; cycles allowed (Phase 00 decision 8). |
-| 2026-08-15 | Draw mechanism deferred to a future ruleset / online match policy | Accepted | classic-v1 has no automatic draw; online play can lock into infinite loops. A `classic-tournament` variant or server-side move cap will be added in Phase 07. Owner: this project. |
+| 2026-08-15 | Draw mechanism deferred to a future ruleset / online match policy | Accepted | `classic-v1` has no automatic draw; online play can lock into infinite loops. The planned Phase 07 follow-up was not implemented and remains required before ranked/automated online play. Owner: this project. |
 | 2026-08-15 | Phase 06 local app = web client (Vite, vanilla TS) instead of React Native/iOS | Accepted | Engine is TS shared via RN for iOS per the tooling decision, but iOS RN cannot build/test inside the Linux dev container (no Xcode/simulator). MVP local app shipped as a browser web client using the same engine/session APIs; genuinely two-player and shippable. React Native iOS app is a follow-up once a macOS/iOS build environment is available. Logged as a worked-around blocker below. |
 | 2026-08-15 | Phase 07 transport = HTTP request/response (not WebSocket) for MVP | Accepted | A framework-free `MatchServer` authoritative module + thin `node:http` wrapper. WS real-time transport wraps the same `MatchServer` later; HTTP MVP keeps the failure surface small and is fully testable. |
 | 2026-08-15 | Web UI polish scope: reusable SVG hand assets only, no DOM/CSS animation rigging | Accepted | Most realistic-UI code (DOM layout, CSS transitions, `window`/`document`) won't port to React Native and would be rebuilt. SVG hand assets transfer to RN via `react-native-svg`, so those are a worthwhile investment; animation and layout rigging are deferred to the native app. Lowest-waste path to a nicer-looking web MVP while keeping the real iOS target in view. |
@@ -44,7 +45,7 @@ The product is shippable as an MVP-plus. Remaining non-blocking follow-ups (pick
 | 8 | Repetition | Allowed; no special loop rule. Relies on normal play / deadlock handling. |
 | 9 | Opening fairness | Starting player alternates each game of a match; recorded in the game state. |
 
-**Working ruleset identifier:** `classic-v1` (to be confirmed in Phase 01).
+**Frozen ruleset identifier:** `classic-v1` (confirmed in Phase 01 and frozen in Phase 04).
 
 ### Notes on consistency
 
@@ -70,14 +71,15 @@ The product is shippable as an MVP-plus. Remaining non-blocking follow-ups (pick
 | 04 - Analysis and rules freeze | Complete | `analysis/enumerate.ts` + `docs/analysis.md`: 1142 reachable states, opening value DRAW, no first-player advantage, 510 WIN / 136 LOSS / 496 DRAW states, min 5 / max-shortest 8 moves. `classic-v1` frozen at doc v1.0, engine 0.1.0. Analysis regression test in `tests/analysis.test.ts`. |
 | 05 - Product foundation | Complete | `src/record.ts` (GameRecord, replay/replayTo, undo, applyMoveToRecord, recordWinner). `ai/chooseMove.ts`: random + heuristic + solved AIs (all use engine API only; solved reuses Phase 04 retrograde values). `session/session.ts`: match config, human/AI turns, undo policy (unlimited/none/max), match scoring, alternating starter, versioned persistence (format v1) + migration error. 66 tests pass. Session imports engine; engine has no session dep (verified by test). |
 | 06 - Local app | Complete | Web client (`web/`, Vite + vanilla TS) using engine/session APIs only; renders hands/active player/legal moves/redistribution/result; restart/undo/rules; optional AI for Player B. `npm run web` (dev) / `npm run web:build` (10.5KB JS). 5 web flow tests (build artifact + start/play/finish/restart, undo, human-vs-AI match). 71 tests total. |
-| 07 - Online play and release | Complete | `server/matchServer.ts` authoritative service (rooms, turn/move-number/stale-move rejection, illegal-move + ruleset/version compatibility, reconnect/sync, AI auto-play, stale abandonment) + `server/http.ts` JSON API w/ `/health`. 18 server tests incl. HTTP health smoke. `docs/release.md` covers privacy, failure handling, deployment, support, release criteria, planned opt-in metrics. 89 tests total. **MVP shippable — all phases complete.** |
-| — | Follow-ups (non-blocking) | Scheduled | iOS RN app native build/run (needs full Xcode); persistent room store across restarts (Redis/DB); WebSocket real-time transport wrapping `MatchServer`; tournament draw rule (`classic-tournament-v1`) for ranked online play. |
+| 07 - Online play and release | Complete (historical phase status; release claim superseded) | The authoritative module and HTTP happy paths originally met the recorded phase evidence. WebSocket and file persistence were later merged. The 2026-08-16 review found a broken HTTP sync route, room-transition gaps, no online client, and stale release/privacy claims; see `docs/handoff.md`. |
+| — | Post-roadmap stabilization | Required | WebSocket and file persistence are merged; the iOS shell has historical simulator-build evidence. Correctness, documentation, iOS verification, and production-artifact blockers are listed in `docs/handoff.md`. Tournament draw handling and an online client remain unimplemented. |
 
 ## Blockers
 
-- None blocking the MVP. **All phases 00–07 complete.**
-- **Resolved:** iOS React Native native shell now builds and runs on the iOS Simulator. Two Metro wiring fixes were required: (1) map TypeScript `.js` extension imports to `.ts`/`.tsx` for the shared engine/session/ai code; (2) ensure npm package resolution prefers `ios-native/node_modules` so the workspace root's dev-only `react-native` copy does not shadow the shell's runtime dependencies. See `ios-native/metro.config.js`.
-- **Deferred (non-blocking):** WebSocket real-time transport and persistent room storage are post-MVP; HTTP request/response + in-memory rooms ship for the MVP.
+- **Current stabilization blockers:** terminal undo can double-award scores; web/iOS restart discards starter rotation; documented HTTP sync returns 404; room/AI seat transitions can replace an active AI or strand an AI host; release/privacy documentation contradicts file persistence. These are reproduced and prioritised in `docs/handoff.md`.
+- **Release-engineering blockers:** no built production server/runtime image, no CI, no runtime input schema/size validation, and no reliable typecheck/test of the actual iOS entry component.
+- **Online-product blockers:** neither shipped client consumes the server protocol, and `classic-v1` has no repetition draw for ranked/automated matches.
+- **Resolved historical blocker:** the iOS React Native shell built and ran on the simulator on 2026-08-15. Its Metro resolver maps shared-source `.js` imports to TypeScript and prefers `ios-native/node_modules`; preserve these behaviors. The current iOS verification gap is separate from that historical build success.
 
 ## Playtest findings (Phase 03)
 
