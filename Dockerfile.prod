@@ -1,0 +1,28 @@
+# Production runtime image for the Chopsticks match server.
+# Builds the server once and runs the compiled artifact with Node.
+FROM node:25-slim AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+RUN npm run build:server
+
+FROM node:25-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Only the compiled server and runtime dependency manifest are needed.
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist-server ./dist-server
+
+EXPOSE 3000
+
+CMD ["node", "dist-server/server/http.js"]

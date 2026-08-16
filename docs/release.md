@@ -104,16 +104,23 @@ The server is a standalone `node:http` process with no external dependencies, wh
 ## Deployment
 
 **Container image (recommended):**
-1. Build a runtime image from `Dockerfile` (already present for dev; for production use a slim multistage that copies `dist/` and runs `node dist/index.js` for the engine + `tsx server/http.ts`, or pre-compile the server).
-2. Run with `PORT` environment variable: `docker run -e PORT=3000 -p 3000:3000 chopsticks/server`.
+1. Build the production image: `docker build -f Dockerfile.prod -t chopsticks/server:latest .`
+2. Run with `PORT` environment variable: `docker run -e PORT=3000 -p 3000:3000 chopsticks/server:latest`.
 3. Place behind a TLS-terminating reverse proxy (e.g. Caddy, nginx, or a cloud load balancer). `FileRoomStore` is single-node only; for MVP run a single replica or swap to a shared `RoomStore` implementation (Redis/DB) before scaling horizontally.
+
+**Manual / development server:**
+- Dev: `npm run serve` (uses `tsx` and auto-reloads on source changes).
+- Compiled production server: `npm run build:server && npm run serve:prod`.
 
 **Environment variables:**
 - `PORT` (default `3000`) — listen port.
 - `ROOM_STORE_PATH` (default `data/rooms.json`) — path to the file-backed room store.
+- `SWEEP_INTERVAL_MS` (default `30000`) — interval at which stale rooms are checked; set to `0` to disable automatic sweeps.
 - No secrets are required by the MVP. No API keys or credentials are read.
 
 **Health check:** `GET /health` returns `200` `{ status: "ok", engine, rulesets }`. Configure the orchestrator's readiness/liveness probe against it.
+
+**CI:** GitHub Actions runs typecheck, tests, engine build, server build, web build, iOS-app typecheck, and a production-image smoke test on every push/PR to `main` (`.github/workflows/ci.yml`).
 
 ## Support expectations (MVP)
 
@@ -130,7 +137,7 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - [x] A local app (web) lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 112 automated tests passing.
+- [x] Containerised development; reproducible builds; 113 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
 
 **Known limitations / follow-ups (out of MVP scope):**
 - iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
