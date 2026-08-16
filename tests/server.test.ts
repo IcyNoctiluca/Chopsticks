@@ -189,6 +189,18 @@ describe("MatchServer: AI and abandoned games", () => {
     expect(abandoned).toBe(true);
     expect(() => s.sync(r.roomCode, "alice")).toThrow(MatchServerError);
   });
+
+  it("sweepStaleRooms abandons all stale matches", () => {
+    const s = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 10, sweepIntervalMs: null });
+    const r1 = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    const r2 = s.createRoom({ clientId: "carol", displayName: "Carol" });
+    s.joinRoom(r1.roomCode, "bob", "Bob");
+    s.joinRoom(r2.roomCode, "dave", "Dave");
+    const abandoned = s.sweepStaleRooms(Date.now() + 1000);
+    expect(abandoned.sort()).toEqual([r1.roomCode, r2.roomCode].sort());
+    expect(() => s.sync(r1.roomCode, "alice")).toThrow(MatchServerError);
+    expect(() => s.sync(r2.roomCode, "carol")).toThrow(MatchServerError);
+  });
 });
 
 describe("MatchServer: finished matches reject moves", () => {
