@@ -44,6 +44,9 @@ class OnlineClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => void 0);
+    }
     this.bindLobby();
   }
 
