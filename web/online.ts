@@ -1,4 +1,5 @@
-import { handSVG } from "./handSVG.js";
+import { bindBoard } from "./boardUI.js";
+import { movesEqual } from "./moves.js";
 import { getLegalMoves } from "../src/index.js";
 import type { GameState, Move, PlayerId } from "../src/index.js";
 
@@ -16,8 +17,6 @@ type ClientMessage =
   | { type: "add-ai"; roomCode: string; difficulty?: "random" | "heuristic" | "solved" }
   | { type: "move"; roomCode: string; clientId: string; move: Move; expectedMoveNumber: number }
   | { type: "sync"; roomCode: string; clientId: string };
-
-const HANDS = ["left", "right"] as const;
 
 function getClientId(): string {
   let id = localStorage.getItem("chopsticks-client-id");
@@ -138,7 +137,6 @@ class OnlineClient {
 
   private inferPlayerId(): PlayerId | null {
     if (!this.state || !this.roomCode) return null;
-    // Try to infer from localStorage room mapping; otherwise fall back to current turn.
     const stored = localStorage.getItem(`chopsticks-room-${this.roomCode}`);
     if (stored === "A" || stored === "B") return stored;
     return null;
@@ -150,6 +148,7 @@ class OnlineClient {
     const aiBtn = document.getElementById("btn-add-ai") as HTMLButtonElement | null;
     const codeInput = document.getElementById("room-code") as HTMLInputElement | null;
     const rulesetSelect = document.getElementById("ruleset") as HTMLSelectElement | null;
+    const splitBtn = document.getElementById("btn-split-online") as HTMLButtonElement | null;
 
     createBtn?.addEventListener("click", () => {
       this.connect();
@@ -169,6 +168,8 @@ class OnlineClient {
       if (!this.roomCode) return;
       this.send({ type: "add-ai", roomCode: this.roomCode, difficulty: "random" });
     });
+
+    splitBtn?.addEventListener("click", () => this.onSplit());
   }
 
   private showGame(): void {
@@ -214,36 +215,25 @@ class OnlineClient {
     } else if (this.phase === "abandoned") {
       statusEl.textContent = "Match abandoned.";
     } else {
-      statusEl.textContent = myTurn ? "Your turn" : `Waiting for player ${active}…`;
+      statusEl.textContent = myTurn ? "Your turn — drag a hand onto another to tap" : `Waiting for player ${active}…`;
     }
 
-    renderHands("hands-a", state.players.A, active === "A");
-    renderHands("hands-b", state.players.B, active === "B");
-
-    const movesEl = document.getElementById("moves")!;
-    movesEl.innerHTML = "";
-    if (winner || this.phase !== "playing" || !myTurn) {
-      const hint = winner ? "Game over." : this.phase === "lobby" ? "Waiting for opponent…" : "Waiting…";
-      movesEl.innerHTML = `<p class="muted">${hint}</p>`;
-      return;
-    }
-
-    const moves = getLegalMoves(state);
-    moves.forEach((m, i) => {
-      const btn = document.createElement("button");
-      btn.className = "move";
-      btn.type = "button";
-      btn.setAttribute("aria-label", describeMove(m));
-      btn.innerHTML = `<span class="tag">#${i + 1}</span> ${describeMove(m)}`;
-      btn.addEventListener("click", () => this.onMove(i, moves));
-      movesEl.appendChild(btn);
+    bindBoard({
+      state,
+      turn: active,
+      finished: winner !== null || this.phase === "abandoned",
+      interactive: myTurn,
+      onMove: (move) => this.submitMove(move),
     });
+
+    const splitControl = document.getElementById("split-control")!;
+    const canSplit = myTurn && getLegalMoves(state).some((m) => m.type === "redistribute");
+    splitControl.hidden = !canSplit;
   }
 
-  private onMove(idx: number, moves: Move[]): void {
-    if (!this.roomCode || !this.playerId) return;
-    const move = moves[idx];
-    if (!move) return;
+  private submitMove(move: Move): void {
+    if (!this.roomCode || !this.state) return;
+    if (!getLegalMoves(this.state).some((m) => movesEqual(m, move))) return;
     this.send({
       type: "move",
       roomCode: this.roomCode,
@@ -253,40 +243,17 @@ class OnlineClient {
     });
   }
 
+  private onSplit(): void {
+    if (!this.state || !this.roomCode) return;
+    const moves = getLegalMoves(this.state).filter((m): m is Move & { type: "redistribute" } => m.type === "redistribute");
+    if (moves.length === 0) return;
+    this.submitMove(moves[0]!);
+  }
+
   private setStatus(text: string): void {
     const el = document.getElementById("status");
     if (el) el.textContent = text;
   }
-}
-
-function renderHands(elId: string, player: { left: number; right: number }, active: boolean): void {
-  const el = document.getElementById(elId)!;
-  const playerLabel = elId.endsWith("a") ? "A" : "B";
-  el.classList.toggle("active", active);
-  el.innerHTML = "";
-  for (const hand of HANDS) {
-    const value = hand === "left" ? player.left : player.right;
-    const isDead = value === 0;
-    const handDiv = document.createElement("div");
-    handDiv.className = "hand" + (isDead ? " dead" : "");
-    handDiv.setAttribute("aria-label", `${playerLabel} ${hand} ${value}`);
-    handDiv.innerHTML = `
-      <span class="label">${playerLabel} ${hand[0]!.toUpperCase()}</span>
-      <span class="hand-art">${handSVG({ value, side: hand, dead: isDead })}</span>
-      <span class="value">${value}</span>
-    `;
-    el.appendChild(handDiv);
-  }
-}
-
-function describeMove(move: Move): string {
-  if (move.type === "tap") {
-    const sh = move.source === "left" ? "L" : "R";
-    const th = move.target === "left" ? "L" : "R";
-    const whose = move.targetPlayer === move.player ? "your" : "opponent's";
-    return `Tap ${sh} → ${whose} ${th}`;
-  }
-  return `Split to R:${move.right} L:${move.left}`;
 }
 
 new OnlineClient();
