@@ -2,15 +2,15 @@
 
 ## Current state
 
-**Active phase:** Phone install & CI fix
+**Active phase:** Drag-and-drop UI
 
-**Status:** CI is now green after fixing the build order in `.github/workflows/ci.yml`. Added PWA support (manifest, service worker, icons) so the web app can be added to a phone home screen. Wired the native iOS project (`ios-native/App.tsx`) to the shared `ios-app/GameScreen.tsx` and documented App Store build/upload steps in `docs/app-store.md`. The app is installable via PWA today and App Store-publishable with a macOS/Xcode environment.
-**Last updated:** 2026-08-16
+**Status:** Replaced the button-based move list with a drag-and-drop hand UI on both the local (`index.html` + `client.ts`) and online (`online.html` + `online.ts`) web clients. Added `web/boardUI.ts` for shared rendering/pointer handling and `web/moves.ts` for move comparison. Split/redistribution is available via a dedicated button when legal. The phone-install/CI-fix work is merged. Typecheck, 135 tests, engine/server/web builds, and CI are green.
+**Last updated:** 2026-08-17
 
 ## Next action
 
-1. Merge the phone-install/CI-fix branch.
-2. Implementation is complete for the current shippable scope; remaining work (automated iOS runtime test, production shared room store) is documented as follow-ups.
+1. Open a PR for the drag-and-drop UI branch.
+2. After merge, follow-ups remain: automated iOS runtime CI (requires macOS runner), production-grade shared room store, and further native client polish.
 
 ## Decision log
 
@@ -37,6 +37,7 @@
 | 2026-08-16 | Production hardening | Accepted | Add `MAX_BODY_BYTES`, per-IP rate limiting (`RATE_LIMIT_WINDOW_MS`/`RATE_LIMIT_MAX`), `ROOM_TTL_MS` cleanup of finished/abandoned rooms, and room-code copy in the online client. All configurable via environment variables. |
 | 2026-08-16 | CI failure root cause | Resolved | `tests/web.test.ts` checks `dist-web/` but CI ran `npm test` before `npm run web:build`. Reordered CI so the web client builds before tests. |
 | 2026-08-16 | Phone install path | Accepted | Ship PWA support (manifest, service worker, icons) for immediate home-screen installation. Keep the React Native `ios-native/` project wired to the shared game screen and document App Store upload steps. |
+| 2026-08-17 | Drag-and-drop web UI | Accepted | Replace numbered move buttons with pointer-event drag between hand circles. Shared `web/boardUI.ts` renders both local and online boards; `web/moves.ts` provides move equality. Split moves use a dedicated button. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -85,7 +86,8 @@
 | — | Tournament ruleset | Complete | Merged via PR #18. Adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. |
 | — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 128 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
 | — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
-| — | Phone install & CI fix | In progress | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. |
+| — | Phone install & CI fix | Complete | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. Merged via PR #22. |
+| — | Drag-and-drop UI | In progress | Shared `web/boardUI.ts`/`web/moves.ts`, pointer-event drag between hands, split button, applied to local and online clients. Evidence: typecheck, 135 tests, web build green. |
 
 ## Blockers
 
@@ -94,7 +96,8 @@
 - **Resolved in online client (#17):** a shipped web client consumes the server protocol.
 - **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
 - **Resolved in production hardening (#20):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
-- **Resolved in phone install/CI fix (in progress):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
+- **Resolved in phone install/CI fix (#22):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
+- **Resolved / in drag-and-drop UI:** button-based moves replaced by hand drag UI on both web clients; split via dedicated button.
 - **Follow-ups (not MVP blockers):** automated iOS runtime test in CI (requires macOS runner), production-grade shared room store for horizontal scaling, further native client polish.
 - **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
 
