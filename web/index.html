@@ -14,11 +14,12 @@
       <h1>Chopsticks</h1>
       <p id="status" aria-live="assertive">Loading...</p>
       <section id="board" aria-label="Game board">
-        <div id="hands-b" class="player" data-player="B"></div>
-        <div class="divider"></div>
-        <div id="hands-a" class="player" data-player="A"></div>
+        <div id="opponent" class="player-row opponent" data-player="B"></div>
+        <div id="player" class="player-row player" data-player="A"></div>
       </section>
-      <section id="moves" aria-label="Legal moves"></section>
+      <div id="split-control" hidden>
+        <button id="btn-split" type="button">Split (revive)</button>
+      </div>
       <nav id="controls">
         <button id="btn-undo" type="button">Undo</button>
         <button id="btn-restart" type="button">Restart game</button>

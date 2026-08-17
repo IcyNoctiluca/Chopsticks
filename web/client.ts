@@ -1,8 +1,7 @@
 import { createSession, getState, playHumanMove, advanceAITurns, undoInSession, canUndoInSession, startNextGame } from "../session/session.js";
-import { getWinner, getLegalMoves, type Move } from "../src/index.js";
-import { handSVG } from "./handSVG.js";
-
-const HANDS = ["left", "right"] as const;
+import { getLegalMoves, getWinner, type Move } from "../src/index.js";
+import { bindBoard } from "./boardUI.js";
+import { movesEqual } from "./moves.js";
 
 let session = createSession({
   playerA: { name: "Player A", type: "human" },
@@ -27,6 +26,7 @@ function main(): void {
   document.getElementById("ai-toggle")!.addEventListener("change", onAIToggle);
   document.getElementById("btn-rules")!.addEventListener("click", toggleRules);
   document.getElementById("btn-close-rules")!.addEventListener("click", toggleRules);
+  document.getElementById("btn-split")?.addEventListener("click", onSplit);
 }
 
 function onAIToggle(e: Event): void {
@@ -65,27 +65,23 @@ function onNewMatch(): void {
   render();
 }
 
+function onSplit(): void {
+  const state = getState(session);
+  if (state.status === "finished") return;
+  if (governorIsAITurn(session, aiForB)) return;
+
+  const moves = getLegalMoves(state).filter((m): m is Move & { type: "redistribute" } => m.type === "redistribute");
+  if (moves.length === 0) return;
+
+  const move = moves[0]!;
+  submitMove(move);
+}
+
 function toggleRules(): void {
   const rules = document.getElementById("rules")!;
   const close = document.getElementById("btn-close-rules")!;
   rules.hidden = !rules.hidden;
   close.hidden = !rules.hidden;
-}
-
-export function onMove(idx: number): void {
-  const state = getState(session);
-  if (state.status === "finished") return;
-  const all = governorLegalMoves(session, aiForB);
-  if (idx >= all.length) return;
-  const move = all[idx]!;
-  if (governorIsAITurn(session, aiForB)) return;
-  session = playHumanMove(session, move);
-  session = advanceAITurns(session);
-  render();
-}
-
-function governorLegalMoves(_session: typeof session, _aiForB: boolean): Move[] {
-  return getLegalMoves(getState(_session));
 }
 
 function governorIsAITurn(s: typeof session, aiForB: boolean): boolean {
@@ -96,6 +92,16 @@ function governorIsAITurn(s: typeof session, aiForB: boolean): boolean {
   return false;
 }
 
+function submitMove(move: Move): void {
+  const state = getState(session);
+  if (state.status === "finished") return;
+  if (governorIsAITurn(session, aiForB)) return;
+  if (!getLegalMoves(state).some((m) => movesEqual(m, move))) return;
+  session = playHumanMove(session, move);
+  session = advanceAITurns(session);
+  render();
+}
+
 function render(): void {
   const state = getState(session);
   const winner = getWinner(state);
@@ -103,72 +109,30 @@ function render(): void {
 
   const statusEl = document.getElementById("status")!;
   if (winner) {
-    statusEl.innerHTML = `<span class="winner-banner">🏆 Player ${winner} wins! Score: A ${session.scores.A} – B ${session.scores.B}</span>`;
+    statusEl.innerHTML = `<span class="winner-banner">Player ${winner} wins! Score: A ${session.scores.A} – B ${session.scores.B}</span>`;
   } else if (governorIsAITurn(session, aiForB)) {
-    statusEl.textContent = `Player ${active} (AI) is thinking...`;
+    statusEl.textContent = `Player ${active} (AI) is thinking…`;
     setTimeout(() => {
       session = advanceAITurns(session);
       render();
     }, 200);
     return;
   } else {
-    statusEl.textContent = `Player ${active}'s turn — Score: A ${session.scores.A} – B ${session.scores.B}`;
+    statusEl.textContent = `Player ${active}'s turn — drag a hand onto another to tap`;
   }
 
-  renderHands("hands-a", state.players.A, active === "A");
-  renderHands("hands-b", state.players.B, active === "B");
+  bindBoard({
+    state,
+    turn: active,
+    finished: winner !== null,
+    interactive: !governorIsAITurn(session, aiForB),
+    onMove: submitMove,
+  });
 
-  const movesEl = document.getElementById("moves")!;
-  movesEl.innerHTML = "";
-  if (winner) {
-    movesEl.innerHTML = `<p class="muted">Game over. Use “Restart game” to play another.</p>`;
-  } else {
-    const moves = governorLegalMoves(session, aiForB);
-    if (governorIsAITurn(session, aiForB)) {
-      movesEl.innerHTML = `<p class="muted">AI is selecting a move...</p>`;
-    } else {
-      moves.forEach((m, i) => {
-        const btn = document.createElement("button");
-        btn.className = "move";
-        btn.type = "button";
-        btn.setAttribute("aria-label", describeMove(m));
-        btn.innerHTML = `<span class="tag">#${i + 1}</span> ${describeMove(m)}`;
-        btn.addEventListener("click", () => onMove(i));
-        movesEl.appendChild(btn);
-      });
-    }
-  }
+  const splitControl = document.getElementById("split-control")!;
+  const canSplit = !winner && !governorIsAITurn(session, aiForB) && getLegalMoves(state).some((m) => m.type === "redistribute");
+  splitControl.hidden = !canSplit;
 
   const undoBtn = document.getElementById("btn-undo")!;
   undoBtn.classList.toggle("disabled", !canUndoInSession(session));
-}
-
-function renderHands(elId: string, player: { left: number; right: number }, active: boolean): void {
-  const el = document.getElementById(elId)!;
-  const playerLabel = elId.endsWith("a") ? "A" : "B";
-  el.classList.toggle("active", active);
-  el.innerHTML = "";
-  for (const hand of HANDS) {
-    const value = hand === "left" ? player.left : player.right;
-    const isDead = value === 0;
-    const handDiv = document.createElement("div");
-    handDiv.className = "hand" + (isDead ? " dead" : "");
-    handDiv.setAttribute("aria-label", `${playerLabel} ${hand} ${value}`);
-    handDiv.innerHTML = `
-      <span class="label">${playerLabel} ${hand[0]!.toUpperCase()}</span>
-      <span class="hand-art">${handSVG({ value, side: hand, dead: isDead })}</span>
-      <span class="value">${value}</span>
-    `;
-    el.appendChild(handDiv);
-  }
-}
-
-function describeMove(move: Move): string {
-  if (move.type === "tap") {
-    const sh = move.source === "left" ? "L" : "R";
-    const th = move.target === "left" ? "L" : "R";
-    const whose = move.targetPlayer === move.player ? "your" : "opponent's";
-    return `Tap ${sh} → ${whose} ${th}`;
-  }
-  return `Split to R:${move.right} L:${move.left}`;
 }

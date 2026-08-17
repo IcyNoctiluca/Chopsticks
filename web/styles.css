@@ -10,6 +10,8 @@
   --bad: #f87171;
   --border: #2c3349;
   --focus: #ffd76a;
+  --hand-size: clamp(80px, 28vw, 140px);
+  --hand-gap: clamp(16px, 6vw, 48px);
 }
 
 * { box-sizing: border-box; }
@@ -21,12 +23,17 @@ html, body {
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   min-height: 100%;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 #app {
-  max-width: 560px;
+  max-width: 680px;
   margin: 0 auto;
   padding: 16px 14px 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 h1 {
@@ -38,119 +45,134 @@ h1 {
 #status {
   text-align: center;
   color: var(--muted);
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   font-size: 0.95rem;
+  min-height: 1.4em;
 }
 
 #board {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 0 20px;
+  min-height: 360px;
 }
 
-.divider {
-  height: 1px;
-  background: var(--border);
-}
-
-.player {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.player[data-player="A"] .hand { background: var(--panel-2); }
-.player[data-player="B"] .hand { background: var(--panel-2); }
-
-.player.active .label { color: var(--accent-2); }
-
-.hand {
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  padding: 18px 8px;
-  text-align: center;
-  background: var(--panel-2);
-}
-
-.hand .label {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.hand .value {
-  display: block;
-  font-size: 1.6rem;
-  font-weight: 700;
-}
-
-.hand .hand-art {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  margin: 6px 0 2px;
-  min-height: 56px;
-}
-
-.hand .hand-art svg {
-  display: block;
-}
-
-/* B's hands mirrored so both players' hands face the centre */
-.player[data-player="B"] .hand .hand-art {
-  transform: scaleY(-1);
-}
-
-.hand.dead {
-  opacity: 0.45;
-}
-.hand.dead .value {
-  color: var(--bad);
-}
-
-#moves {
-  margin: 14px 0;
-  display: grid;
-  gap: 6px;
-}
-
-.move {
+.player-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--hand-gap);
+  position: relative;
+}
+
+.player-row.opponent {
+  transform: rotate(180deg);
+}
+
+.hand {
+  width: var(--hand-size);
+  height: var(--hand-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--panel-2), var(--panel));
+  border: 3px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.hand.draggable {
+  cursor: grab;
+}
+
+.hand.draggable:active {
+  cursor: grabbing;
+}
+
+.hand-inner {
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.hand-label {
+  position: absolute;
+  bottom: 14%;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.player-row.opponent .hand-label {
+  transform: rotate(180deg);
+}
+
+.hand.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(106, 166, 255, 0.15);
+}
+
+.hand.dead {
+  opacity: 0.35;
+  background: radial-gradient(circle at 35% 35%, #2a2f40, #1f2433);
+}
+
+.hand.dead .hand-inner {
+  color: var(--bad);
+}
+
+.hand.dragging {
+  opacity: 0.3;
+}
+
+.hand.drop-target {
+  border-color: var(--accent-2);
+}
+
+.hand.drop-target-hover {
+  transform: scale(1.08);
+  border-color: var(--good);
+  box-shadow: 0 0 0 6px rgba(110, 231, 183, 0.15);
+}
+
+.drag-ghost {
+  opacity: 0.9;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+#split-control {
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+#split-control button {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
+  padding: 10px 16px;
   cursor: pointer;
-  width: 100%;
+  font-size: 0.95rem;
 }
-
-.move:hover { border-color: var(--accent); }
-.move:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.move .tag {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
+#split-control button:hover { border-color: var(--accent); }
 
 #controls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: center;
   margin-top: 8px;
 }
 
@@ -166,6 +188,7 @@ h1 {
 }
 #controls button:hover { border-color: var(--accent); }
 #controls button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+#controls button.disabled { opacity: 0.5; cursor: not-allowed; }
 
 .toggle {
   display: inline-flex;
@@ -174,6 +197,16 @@ h1 {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+#online-link {
+  text-align: center;
+  margin: 12px 0 0;
+}
+#online-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+#online-link a:hover { text-decoration: underline; }
 
 #rules {
   background: var(--panel);
@@ -194,18 +227,6 @@ h1 {
   margin: 8px 0;
 }
 
-.disabled { opacity: 0.5; cursor: not-allowed; }
-
-#online-link {
-  text-align: center;
-  margin: 0 0 12px;
-}
-#online-link a {
-  color: var(--accent);
-  text-decoration: none;
-}
-#online-link a:hover { text-decoration: underline; }
-
 .lobby {
   display: grid;
   gap: 10px;
@@ -214,6 +235,9 @@ h1 {
 .lobby-row {
   display: flex;
   gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 .lobby input {
   flex: 1;
