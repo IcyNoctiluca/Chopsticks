@@ -2,15 +2,18 @@
 
 ## Current state
 
-**Active phase:** Drag-and-drop UI
+**Active phase:** Post-merge release-readiness review
 
-**Status:** Replaced the button-based move list with a drag-and-drop hand UI on both the local (`index.html` + `client.ts`) and online (`online.html` + `online.ts`) web clients. Added `web/boardUI.ts` for shared rendering/pointer handling and `web/moves.ts` for move comparison. Split/redistribution is available via a dedicated button when legal. The phone-install/CI-fix work is merged. Typecheck, 135 tests, engine/server/web builds, and CI are green.
+**Status:** PR #23 merged the shared drag-and-drop board. A documentation-only review at merge commit `3cd4dea` confirmed that typecheck, 135 tests, engine/server/web builds, and the shared iOS-app typecheck pass in the dev container. The core implementation is substantially complete, but public release signoff is paused: the online client drops the first create/join action while connecting, the web split control chooses an arbitrary legal redistribution, online lobby controls remain visible over the game, tournament draws are not rendered correctly, and drag-only hands lack keyboard semantics. See `docs/handoff.md` for reproductions, priorities, and acceptance checks.
 **Last updated:** 2026-08-17
 
 ## Next action
 
-1. Open a PR for the drag-and-drop UI branch.
-2. After merge, follow-ups remain: automated iOS runtime CI (requires macOS runner), production-grade shared room store, and further native client polish.
+1. Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.
+2. Add an explicit identity-aware redistribution picker in both web clients.
+3. Carry tournament draw results through sync/WebSocket/client rendering.
+4. Make the online board player-relative and add keyboard/touch accessibility.
+5. Only after those items pass a two-browser playthrough should the web product be called release-ready. PWA offline proof, native App Store work, and public-service hardening remain separate follow-ups.
 
 ## Decision log
 
@@ -38,6 +41,7 @@
 | 2026-08-16 | CI failure root cause | Resolved | `tests/web.test.ts` checks `dist-web/` but CI ran `npm test` before `npm run web:build`. Reordered CI so the web client builds before tests. |
 | 2026-08-16 | Phone install path | Accepted | Ship PWA support (manifest, service worker, icons) for immediate home-screen installation. Keep the React Native `ios-native/` project wired to the shared game screen and document App Store upload steps. |
 | 2026-08-17 | Drag-and-drop web UI | Accepted | Replace numbered move buttons with pointer-event drag between hand circles. Shared `web/boardUI.ts` renders both local and online boards; `web/moves.ts` provides move equality. Split moves use a dedicated button. |
+| 2026-08-17 | Release-readiness claim superseded by current-state review | Accepted | Implementation milestones remain complete, but the product is not yet signed off for public online/PWA/App Store release. Functional UI blockers and exact acceptance checks are recorded in `docs/handoff.md`. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -84,10 +88,10 @@
 | — | Release engineering | Complete | Merged via PR #16. Compiled server artifact, production Dockerfile, stale-room sweeps, GitHub Actions CI. |
 | — | Online client | Complete | Merged via PR #17. web/online.html + web/online.ts connects via WebSocket to create/join rooms and play. |
 | — | Tournament ruleset | Complete | Merged via PR #18. Adds `classic-tournament-v1` threefold-repetition draw rule, server/online-client support, and half-point scoring. |
-| — | MVP shippable | Complete | All blockers from the 2026-08-16 review are resolved. 128 tests pass; typecheck, engine/server/web builds, iOS-app typecheck, and CI all green. |
+| — | MVP implementation | Complete; release signoff pending | All blockers from the 2026-08-16 review were resolved. The 2026-08-17 review found new online UI, redistribution, draw-result, accessibility, and offline-claim gaps; see `docs/handoff.md`. |
 | — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
 | — | Phone install & CI fix | Complete | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. Merged via PR #22. |
-| — | Drag-and-drop UI | In progress | Shared `web/boardUI.ts`/`web/moves.ts`, pointer-event drag between hands, split button, applied to local and online clients. Evidence: typecheck, 135 tests, web build green. |
+| — | Drag-and-drop UI | Merged; follow-up required | PR #23 merged shared `web/boardUI.ts`/`web/moves.ts` and pointer drag. Review found that split choice is incomplete, active-turn styling is mismatched, and hands lack keyboard semantics. Evidence: typecheck, 135 tests, web build green. |
 
 ## Blockers
 
@@ -97,9 +101,10 @@
 - **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
 - **Resolved in production hardening (#20):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
 - **Resolved in phone install/CI fix (#22):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
-- **Resolved / in drag-and-drop UI:** button-based moves replaced by hand drag UI on both web clients; split via dedicated button.
-- **Follow-ups (not MVP blockers):** automated iOS runtime test in CI (requires macOS runner), production-grade shared room store for horizontal scaling, further native client polish.
-- **Environment blocker (worked around):** Docker Compose plugin is unavailable, so verification ran on host. Documented in decision log above.
+- **Current web release blockers:** reliable first-click create/join; explicit redistribution selection; correct lobby/game and Add-AI visibility; tournament draw rendering; keyboard/touch accessibility. Full detail is in `docs/handoff.md`.
+- **Release-surface follow-ups:** prove the full built PWA works offline before claiming it; complete native device/TestFlight/App Store verification; add WebSocket/public-service hardening.
+- **Scale/maintenance follow-ups:** production-grade shared room store for horizontal scaling, macOS iOS runtime CI, nested dependency exclusions in `.dockerignore`, and a root lint command.
+- **Environment status:** Docker Compose is available in the current environment and all review checks ran in the container. The 2026-08-16 worked-around decision remains historical context only.
 
 ## Playtest findings (Phase 03)
 
