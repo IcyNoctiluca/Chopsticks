@@ -1,6 +1,6 @@
 # Release Operations — Chopsticks
 
-This document covers privacy, failure handling, deployment, support expectations, release criteria, and post-launch metrics. It satisfies Phase 07's release-readiness exit criteria for the MVP.
+This document covers privacy, failure handling, deployment, support expectations, release criteria, and post-launch metrics. The implementation milestones exist, but public release signoff is currently pending the functional UI and PWA work recorded in `docs/handoff.md`; that review supersedes older “shippable” wording.
 
 ## Architecture recap
 
@@ -69,8 +69,9 @@ The server supports `classic-v1` (frozen casual ruleset) and `classic-tournament
 Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence.ts`). By default the server writes to `data/rooms.json`; set `ROOM_STORE_PATH` to use a different location. The store is loaded when `MatchServer` starts and updated after every room mutation.
 
 **Retention semantics (MVP):**
-- Room data is kept until the process removes the room or the store file is deleted.
-- No automatic expiration of the store file itself; abandoned rooms remain in the file until an operator deletes it or a future cleanup policy is added.
+- The running server sweeps rooms every `SWEEP_INTERVAL_MS` (30 seconds by default).
+- Finished and abandoned rooms are removed from memory and the store after `ROOM_TTL_MS` (24 hours by default). The current age calculation uses room creation time rather than terminal time; see `docs/handoff.md`.
+- Deleting the store file removes all retained rooms; there is no per-player account/history store.
 - `displayName` values are persisted alongside room state; they are not personal data but are written to disk.
 - For production at scale, swap `FileRoomStore` for a Redis/DB-backed implementation behind the same `RoomStore` interface and add an explicit retention/TTL policy.
 
@@ -82,13 +83,13 @@ Rooms survive server restarts via a file-backed `RoomStore` (`server/persistence
 - Ruleset and engine-version compatibility are recorded per room; a move is rejected if the room's ruleset doesn't match the authoritative state's ruleset (`incompatible-ruleset`).
 - Finished and abandoned matches reject all further submissions (`match-finished`, `match-abandoned`).
 
-These are covered by integration tests in `tests/server.test.ts`, `tests/server-ws.test.ts`, and `tests/server-persistence.test.ts` (101 tests passing across all suites).
+These are covered by integration tests in `tests/server.test.ts`, `tests/server-ws.test.ts`, and `tests/server-persistence.test.ts` (135 tests passing across all suites at the 2026-08-17 review).
 
 ## Reconnect and stale-move behaviour
 
 - **Reconnect:** a dropped client calls `/sync` to receive the full authoritative `state`, `history`, and the current `expectedMoveNumber`/`expectedTurn`. They then resume submitting moves with the correct move number. Tested in `MatchServer: reconnect / sync > replay of server history reproduces the authoritative state`.
 - **Stale-move:** a submit with the wrong `expectedMoveNumber` is rejected with `stale-move` and the move is **not** applied. Tested in `MatchServer: stale-move rejection`.
-- **Timeouts / abandoned games:** the server tracks `lastActivityAt` per room; `abandonIfStale(code, now)` transitions an inactive room to `abandoned`, after which sync and moves are rejected. A periodic sweep (deployment responsibility) calls `abandonIfStale` for each room. Tested in `MatchServer: AI and abandoned games > abandons a stale match`.
+- **Timeouts / abandoned games:** the server tracks `lastActivityAt` per room; `abandonIfStale(code, now)` transitions an inactive room to `abandoned`, after which sync and moves are rejected. The production entry point runs a configurable periodic sweep. Tested in `MatchServer: AI and abandoned games > abandons a stale match`.
 
 ## Privacy
 
@@ -106,10 +107,10 @@ These are covered by integration tests in `tests/server.test.ts`, `tests/server-
 | Server process restarts | Rooms are reloaded from the configured `RoomStore`; in-progress matches resume. Clients reconnect with `/sync`. |
 | Illegal/stale/not-your-turn submit | Server returns a `MatchServerError` with a `code`; client re-syncs via `/sync` and retries. No state changes. |
 | Room not found / full / finished / abandoned | Server returns a typed error; client surfaces an appropriate message. |
-| AI opponent | Runs server-side via the engine's `getLegalMoves`/`applyMove`; deterministic difficulty; failure is impossible (always a legal move while the game is non-terminal). |
+| AI opponent | Runs server-side through the engine API and always submits a legal move while non-terminal. Random and heuristic play are not guaranteed to choose the same move across runs. |
 | Unhandled exception in handler | `guard()` returns a generic `500` and the server keeps running. |
 
-The server is a standalone `node:http` process with no external dependencies, which keeps the failure surface small.
+The server is a small `node:http` process with the `ws` runtime dependency for real-time transport.
 
 ## Deployment
 
@@ -142,18 +143,20 @@ The server is a standalone `node:http` process with no external dependencies, wh
 - **Compatibility:** the server advertises its engine version (`0.1.0`) and supported rulesets (`classic-v1`, `classic-tournament-v1`) on `/health`. Clients should consult this and refuse to join rooms whose engine version differs. A future client/server version mismatch will be surfaced as `incompatible-engine-version`.
 - **No SLA** is offered for the MVP; availability is best-effort.
 
-## Release criteria (MVP — shippable)
+## Release criteria (MVP implementation — public signoff pending)
 
 - [x] Engine frozen at `classic-v1` v1.0 and `classic-tournament-v1` v1.0, engine `0.1.0`, with deterministic replay (Phase 04/05).
 - [x] Clients cannot authoritatively alter state (server validates every move via the engine) — integration tested.
 - [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`, `tests/server-ws.test.ts`).
 - [x] A local web app lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
-- [x] An online web client consumes the server protocol to create/join rooms and play human vs human or human vs AI.
+- [ ] The online web client reliably creates/joins on the first action, hides lobby-only controls during play, presents all legal redistributions, and renders tournament draws. See `docs/handoff.md`.
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 128 automated tests passing; CI covers typecheck, tests, engine/server/web builds, iOS-app typecheck, and production Docker image smoke test.
+- [x] Containerised development; reproducible builds; 135 automated tests passing locally; CI is configured for typecheck, tests, engine/server/web builds, iOS-app typecheck, and a production Docker image smoke test.
 
 **Known limitations / follow-ups (out of MVP scope):**
+- Current web release blockers and their acceptance checks are maintained in `docs/handoff.md`.
+- Offline PWA operation is not yet reliable because the complete hashed build asset graph is not cached.
 - iOS React Native app requires a macOS build environment to produce a signed build; the web client and shared TypeScript code typecheck.
 - Rate limiting / abuse protection at the edge.
 - Production-grade shared room state: `FileRoomStore` is single-node; horizontal scaling needs a Redis/DB-backed `RoomStore`.
