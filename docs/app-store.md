@@ -9,9 +9,11 @@ The web client is a PWA. Anyone with a modern iPhone can install it without the 
 1. Open Safari and navigate to the deployed web URL (e.g. `https://your-server.example.com`).
 2. Tap the Share button.
 3. Scroll down and tap **Add to Home Screen**.
-4. The app launches full-screen, offline-capable, and works for local or online play.
+4. The app launches full-screen and supports local or online play while connected.
 
 To deploy the web client, run `npm run web:build` and serve the `dist-web/` directory behind HTTPS (e.g. with Caddy, nginx, or a static host like Vercel/Netlify).
+
+The current service worker does not cache Vite's complete hashed JavaScript/CSS asset graph, so reliable offline play has not yet been proved and must not be advertised. Complete and verify the PWA work described in `docs/handoff.md` before restoring an offline-capable claim.
 
 ## Option 2: App Store via the React Native project
 
