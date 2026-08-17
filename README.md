@@ -29,7 +29,7 @@ Containerised development keeps tooling off your host. Start the runtime once, t
 colima start                 # start the container runtime
 docker compose up -d         # start the dev container
 docker compose exec dev npm ci            # refresh the named dependency volume after manifest changes
-docker compose exec dev npm test          # 128 tests
+docker compose exec dev npm test          # 135 tests
 docker compose exec dev npm run typecheck
 docker compose exec dev npm run web       # local web app at http://localhost:5173
 docker compose run --rm -it dev npm run play   # interactive CLI
@@ -41,7 +41,7 @@ See [DESIGN.md](DESIGN.md) for architecture and [PROGRESS.md](PROGRESS.md) for t
 
 ## Install on your phone
 
-- **Quickest**: open the deployed web app in Safari, tap Share → **Add to Home Screen**. The PWA works offline and supports local and online play.
+- **Quickest**: open the deployed web app in Safari and tap Share → **Add to Home Screen**. It is installable and supports local and online play while connected. Reliable offline asset caching is still a release follow-up; see `docs/handoff.md`.
 - **App Store**: follow the build/upload steps in [docs/app-store.md](docs/app-store.md) using the React Native project in `ios-native/`.
 
 ## Guiding principle
