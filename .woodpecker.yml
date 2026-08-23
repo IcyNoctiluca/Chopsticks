@@ -1,0 +1,54 @@
+# Primary CI pipeline for the Forgejo repository on git.battlenet.internal.
+#
+# The production-image smoke test uses Woodpecker's Docker-in-Docker pattern.
+# Enable security trust for this repository in Woodpecker so the privileged
+# Docker service can start. No repository secrets are required.
+
+services:
+  docker:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+
+steps:
+  verify:
+    image: node:25-slim
+    commands:
+      - npm ci
+      - npm run typecheck
+      - npm run build
+      - npm run build:server
+      # tests/web.test.ts inspects dist-web, so build the client first.
+      - npm run web:build
+      - npm test
+      - npm --prefix ios-app run typecheck
+    when:
+      - event: [push, pull_request, manual]
+
+  production-image-smoke:
+    image: docker:24-cli
+    environment:
+      DOCKER_HOST: tcp://docker:2375
+    commands:
+      - docker build -f Dockerfile.prod -t chopsticks/server:ci .
+      - docker run -d --name chopsticks-smoke --rm chopsticks/server:ci
+      - |
+        status=1
+        for i in $(seq 1 12); do
+          if docker exec chopsticks-smoke node --input-type=module -e "const response = await fetch('http://127.0.0.1:3000/health'); if (!response.ok) process.exit(1); console.log(await response.text())" > /tmp/health.json; then
+            status=0
+            break
+          fi
+          sleep 1
+        done
+        if [ "$status" -ne 0 ]; then
+          echo "production server never became healthy" >&2
+          docker logs chopsticks-smoke || true
+          docker stop chopsticks-smoke || true
+          exit 1
+        fi
+      - grep -q '"status":"ok"' /tmp/health.json
+      - docker stop chopsticks-smoke
+    when:
+      - event: [push, pull_request, manual]
