@@ -93,7 +93,11 @@ tea pr create --login battlenet --repo liamp/Chopsticks \
 ```
 
 Require the Woodpecker pipeline to pass before merging. GitHub mirroring is a
-separate milestone operation and must not bypass the Forgejo PR gate.
+separate milestone operation and must not bypass the Forgejo PR gate. The
+authoritative mirror procedure is in `AGENTS.md`: push a temporary branch from
+the exact green `battlenet/main` state, open a GitHub PR, wait for its checks,
+and merge it with a merge commit. Never push `origin/main` directly or use
+squash/rebase for mirror PRs.
 
 ## Local parity check
 
