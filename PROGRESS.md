@@ -2,18 +2,19 @@
 
 ## Current state
 
-**Active phase:** Post-merge release-readiness review
+**Active phase:** CI-first continuation enablement
 
-**Status:** PR #23 merged the shared drag-and-drop board. A documentation-only review at merge commit `3cd4dea` confirmed that typecheck, 135 tests, engine/server/web builds, and the shared iOS-app typecheck pass in the dev container. The core implementation is substantially complete, but public release signoff is paused: the online client drops the first create/join action while connecting, the web split control chooses an arbitrary legal redistribution, online lobby controls remain visible over the game, tournament draws are not rendered correctly, and drag-only hands lack keyboard semantics. See `docs/handoff.md` for reproductions, priorities, and acceptance checks.
-**Last updated:** 2026-08-17
+**Status:** The remaining release-readiness work is being moved behind the local Forgejo/Woodpecker CI gate. The Woodpecker pipeline and Forgejo-primary branch/PR workflow are implemented on `codex/ci-first-enablement`. Local parity is green: the Woodpecker 3.17 CLI accepts the configuration; root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test pass. Repository activation and the first green remote run are pending. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
+**Last updated:** 2026-08-23
 
 ## Next action
 
-1. Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.
-2. Add an explicit identity-aware redistribution picker in both web clients.
-3. Carry tournament draw results through sync/WebSocket/client rendering.
-4. Make the online board player-relative and add keyboard/touch accessibility.
-5. Only after those items pass a two-browser playthrough should the web product be called release-ready. PWA offline proof, native App Store work, and public-service hardening remain separate follow-ups.
+1. Activate `liamp/Chopsticks` in local Forgejo/Woodpecker, enable security trust for Docker-in-Docker, and record the first green pipeline.
+2. Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.
+3. Add an explicit identity-aware redistribution picker in both web clients.
+4. Carry tournament draw results through sync/WebSocket/client rendering.
+5. Make the online board player-relative and add keyboard/touch accessibility.
+6. Only after those items pass CI and a two-browser playthrough should the web product be called release-ready. PWA offline proof, native App Store work, and public-service hardening remain separate follow-ups.
 
 ## Decision log
 
@@ -42,6 +43,7 @@
 | 2026-08-16 | Phone install path | Accepted | Ship PWA support (manifest, service worker, icons) for immediate home-screen installation. Keep the React Native `ios-native/` project wired to the shared game screen and document App Store upload steps. |
 | 2026-08-17 | Drag-and-drop web UI | Accepted | Replace numbered move buttons with pointer-event drag between hand circles. Shared `web/boardUI.ts` renders both local and online boards; `web/moves.ts` provides move equality. Split moves use a dedicated button. |
 | 2026-08-17 | Release-readiness claim superseded by current-state review | Accepted | Implementation milestones remain complete, but the product is not yet signed off for public online/PWA/App Store release. Functional UI blockers and exact acceptance checks are recorded in `docs/handoff.md`. |
+| 2026-08-23 | Forgejo/Woodpecker is the working CI path | Accepted | `git.battlenet.internal` becomes the working forge and `ci.battlenet.internal` the primary CI gate. `.woodpecker.yml` mirrors the established verification contract and adds a production-image health smoke test. GitHub remains an optional milestone mirror. Nested `node_modules` are excluded from Docker build context so local and CI builds no longer transfer roughly 500 MB of irrelevant dependencies. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -92,6 +94,7 @@
 | — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
 | — | Phone install & CI fix | Complete | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. Merged via PR #22. |
 | — | Drag-and-drop UI | Merged; follow-up required | PR #23 merged shared `web/boardUI.ts`/`web/moves.ts` and pointer drag. Review found that split choice is incomplete, active-turn styling is mismatched, and hands lack keyboard semantics. Evidence: typecheck, 135 tests, web build green. |
+| — | CI-first continuation | In progress | `.woodpecker.yml`, Forgejo-primary workflow, and `docs/ci.md` are implemented. Woodpecker 3.17 lint and the full local parity contract pass; production build context reduced from about 1.35 GB to 1.36 MB. Exit requires Forgejo/Woodpecker activation and a green remote run. |
 
 ## Blockers
 
@@ -103,7 +106,7 @@
 - **Resolved in phone install/CI fix (#22):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
 - **Current web release blockers:** reliable first-click create/join; explicit redistribution selection; correct lobby/game and Add-AI visibility; tournament draw rendering; keyboard/touch accessibility. Full detail is in `docs/handoff.md`.
 - **Release-surface follow-ups:** prove the full built PWA works offline before claiming it; complete native device/TestFlight/App Store verification; add WebSocket/public-service hardening.
-- **Scale/maintenance follow-ups:** production-grade shared room store for horizontal scaling, macOS iOS runtime CI, nested dependency exclusions in `.dockerignore`, and a root lint command.
+- **Scale/maintenance follow-ups:** production-grade shared room store for horizontal scaling, macOS iOS runtime CI, and a root lint command.
 - **Environment status:** Docker Compose is available in the current environment and all review checks ran in the container. The 2026-08-16 worked-around decision remains historical context only.
 
 ## Playtest findings (Phase 03)

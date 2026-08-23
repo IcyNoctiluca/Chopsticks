@@ -134,7 +134,7 @@ The server is a small `node:http` process with the `ws` runtime dependency for r
 
 **Health check:** `GET /health` returns `200` `{ status: "ok", engine, rulesets }`. Configure the orchestrator's readiness/liveness probe against it.
 
-**CI:** GitHub Actions runs typecheck, tests, engine build, server build, web build, iOS-app typecheck, and a production-image smoke test on every push/PR to `main` (`.github/workflows/ci.yml`).
+**CI:** Woodpecker is the primary CI system. It runs typecheck, tests, engine build, server build, web build, iOS-app typecheck, and a production-image smoke test on Forgejo branch pushes and pull requests (`.woodpecker.yml`). The GitHub Actions workflow remains for the public mirror. Setup and operating details are in `docs/ci.md`.
 
 ## Support expectations (MVP)
 

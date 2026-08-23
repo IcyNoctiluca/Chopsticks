@@ -19,16 +19,21 @@
 
 Each phase is delivered on its own branch, merged into `main` via a pull request, then cleaned up before the next phase begins.
 
-1. **Branch from `main`.** Ensure local `main` is up to date first (`git switch main && git pull --ff-only origin main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
+1. **Branch from `main`.** Forgejo is the working forge. Ensure local `main` is up to date first (`git switch main && git pull --ff-only battlenet main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
 2. **Work on the branch.** Commit focused, conventional commits there. Run lint, typecheck (`npm run typecheck`), and tests (`npm test`) before considering the phase complete.
-3. **Push the branch.** `git push -u origin <branch>`.
-4. **Open a PR to `main`.** Use `gh pr create --base main --head <branch>` with a summary of the phase work, evidence of meeting the exit criteria, and a request to delete the branch after merge.
-5. **Merge the PR.** Merge on GitHub (or via `gh pr merge`).
-6. **Delete the branches.** Delete the local and remote phase branches: `git push origin --delete <branch>` then `git branch -d <branch>`.
-7. **Pull the latest `main`.** `git switch main && git pull --ff-only origin main`.
-8. **Repeat from step 1** for the next phase, branching off the updated `main`.
+3. **Push the branch.** `git push -u battlenet <branch>`.
+4. **Open a Forgejo PR to `main`.** Use `tea pr create --login battlenet --repo liamp/Chopsticks --base main --head <branch>` with a summary of the phase work and evidence of meeting the exit criteria.
+5. **Wait for Woodpecker.** The `.woodpecker.yml` pipeline must pass before merge.
+6. **Merge the PR.** Merge in Forgejo (or via `tea pr merge`).
+7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` then `git branch -d <branch>`.
+8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main`.
+9. **Repeat from step 1** for the next phase, branching off the updated `main`.
 
 Never commit directly to `main`. Keep `main` always green and deployable.
+
+The `battlenet` remote is the working Forgejo repository watched by Woodpecker.
+`origin` is the GitHub mirror and is updated separately at meaningful milestones;
+do not use it to bypass the Forgejo PR and CI gate. See `docs/ci.md`.
 
 ## Containerised development
 
