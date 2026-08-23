@@ -4,7 +4,7 @@
 
 **Active phase:** CI-first continuation enablement
 
-**Status:** The Forgejo/Woodpecker CI gate is operational. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false). Manual pipeline #1 passed at commit `b611843`: root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test are green remotely. Forgejo PR #1 contains the migration and this checkout uses `battlenet` as its main upstream/default push remote. Final documentation evidence is awaiting its branch pipeline and merge. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
+**Status:** The Forgejo/Woodpecker CI gate is operational. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false). Manual pipeline #1 passed at commit `b611843`: root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test are green remotely. Forgejo PR #1 contains the migration and this checkout uses `battlenet` as its main upstream/default push remote. Pipeline triggers are limited to pull requests, `main` pushes, and manual runs so a PR update does not queue duplicate push and pull-request workflows on the single-workflow runner. Final evidence is awaiting the latest branch pipeline and merge. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
 **Last updated:** 2026-08-23
 
 ## Next action
