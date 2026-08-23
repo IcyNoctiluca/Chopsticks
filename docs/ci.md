@@ -53,28 +53,36 @@ git config remote.pushDefault battlenet
 git branch --set-upstream-to=battlenet/main main
 
 # Find the Forgejo repository id, activate it, then enable only security trust.
+# Host curl uses the Mac keychain's trusted Battlenet Internal CA.
 FORGEJO_REPO_ID="$(tea api --login battlenet repos/liamp/Chopsticks | jq -r .id)"
-docker run --rm \
-  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
-  -e WOODPECKER_TOKEN \
-  woodpeckerci/woodpecker-cli:v3.17.0 repo add "$FORGEJO_REPO_ID"
-docker run --rm \
-  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
-  -e WOODPECKER_TOKEN \
-  woodpeckerci/woodpecker-cli:v3.17.0 repo update \
-  --unsafe --trusted-security liamp/Chopsticks
+WOODPECKER_REPO="$(curl -fsS -X POST \
+  -H "Authorization: Bearer $WOODPECKER_TOKEN" \
+  "https://ci.battlenet.internal/api/repos?forge_remote_id=$FORGEJO_REPO_ID")"
+WOODPECKER_REPO_ID="$(printf '%s' "$WOODPECKER_REPO" | jq -r .id)"
+curl -fsS -X PATCH \
+  -H "Authorization: Bearer $WOODPECKER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"trusted":{"security":true,"volumes":false,"network":false}}' \
+  "https://ci.battlenet.internal/api/repos/$WOODPECKER_REPO_ID" | \
+  jq '{id,full_name,active,trusted}'
 
 # Trigger the first run after activation (the earlier push predates its webhook).
-docker run --rm \
-  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
-  -e WOODPECKER_TOKEN \
-  woodpeckerci/woodpecker-cli:v3.17.0 pipeline start liamp/Chopsticks
+CURRENT_BRANCH="$(git branch --show-current)"
+jq -n --arg branch "$CURRENT_BRANCH" '{branch:$branch,variables:{}}' | \
+  curl -fsS -X POST \
+    -H "Authorization: Bearer $WOODPECKER_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d @- \
+    "https://ci.battlenet.internal/api/repos/$WOODPECKER_REPO_ID/pipelines" | \
+  jq '{id,number,status,event,branch,commit}'
+unset WOODPECKER_TOKEN
 ```
 
 The Woodpecker token is available from the user's Woodpecker profile. The
 Forgejo token can be created through `tea login add --oauth` or Forgejo's
 Applications settings. Keep tokens in a password manager or ephemeral shell
 environment, never in Git configuration, pipeline YAML, or repository secrets.
+Rotate any token disclosed outside that boundary.
 
 ## Branch and pull-request flow
 
