@@ -7,7 +7,10 @@ it is not the working CI source of truth.
 
 ## Pipeline contract
 
-`.woodpecker.yml` runs on branch pushes, pull requests, and manual runs. A green
+`.woodpecker.yml` runs for Forgejo pull requests, pushes to `main`, and manual
+runs. Feature-branch pushes are deliberately excluded because Forgejo also
+sends a pull-request event for each PR update; running both would queue the same
+verification twice on the wake-on-demand, single-workflow runner. A green
 pipeline proves:
 
 - root TypeScript typecheck;
@@ -18,7 +21,9 @@ pipeline proves:
 - production Docker image build plus a live `/health` smoke test.
 
 The pipeline uses the same Node 25 base as the development and production
-Dockerfiles. It requires no project secrets.
+Dockerfiles. The image smoke step waits for its Docker-in-Docker service to be
+ready, which is necessary even when a warm dependency cache makes the verify
+step finish quickly. It requires no project secrets.
 
 Validate pipeline syntax against the server's Woodpecker version before push:
 
