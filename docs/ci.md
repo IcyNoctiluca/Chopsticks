@@ -54,15 +54,21 @@ git branch --set-upstream-to=battlenet/main main
 
 # Find the Forgejo repository id, activate it, then enable only security trust.
 FORGEJO_REPO_ID="$(tea api --login battlenet repos/liamp/Chopsticks | jq -r .id)"
-WOODPECKER_REPO="$(curl -fsS -X POST \
-  -H "Authorization: Bearer $WOODPECKER_TOKEN" \
-  "https://ci.battlenet.internal/api/repos?forge_remote_id=$FORGEJO_REPO_ID")"
-WOODPECKER_REPO_ID="$(printf '%s' "$WOODPECKER_REPO" | jq -r .id)"
-curl -fsS -X PATCH \
-  -H "Authorization: Bearer $WOODPECKER_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"trusted":{"security":true,"volumes":false,"network":false}}' \
-  "https://ci.battlenet.internal/api/repos/$WOODPECKER_REPO_ID"
+docker run --rm \
+  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
+  -e WOODPECKER_TOKEN \
+  woodpeckerci/woodpecker-cli:v3.17.0 repo add "$FORGEJO_REPO_ID"
+docker run --rm \
+  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
+  -e WOODPECKER_TOKEN \
+  woodpeckerci/woodpecker-cli:v3.17.0 repo update \
+  --unsafe --trusted-security liamp/Chopsticks
+
+# Trigger the first run after activation (the earlier push predates its webhook).
+docker run --rm \
+  -e WOODPECKER_SERVER=https://ci.battlenet.internal \
+  -e WOODPECKER_TOKEN \
+  woodpeckerci/woodpecker-cli:v3.17.0 pipeline start liamp/Chopsticks
 ```
 
 The Woodpecker token is available from the user's Woodpecker profile. The
