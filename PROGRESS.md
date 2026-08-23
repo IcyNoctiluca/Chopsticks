@@ -4,7 +4,7 @@
 
 **Active phase:** CI-first continuation enablement
 
-**Status:** The Forgejo/Woodpecker CI gate is operational. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false). Manual pipeline #1 passed at commit `b611843`: root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test are green remotely. Forgejo PR #1 contains the migration and this checkout uses `battlenet` as its main upstream/default push remote. Pipeline triggers are limited to pull requests, `main` pushes, and manual runs so a PR update does not queue duplicate push and pull-request workflows on the single-workflow runner. Final evidence is awaiting the latest branch pipeline and merge. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
+**Status:** The Forgejo/Woodpecker CI gate is operational. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false). Manual pipeline #1 passed at commit `b611843`, and PR pipeline #5 passed at commit `93d278d` after adding an explicit Docker service readiness gate: root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test are green remotely. Forgejo PR #1 contains the migration and this checkout uses `battlenet` as its main upstream/default push remote. Pipeline triggers are limited to pull requests, `main` pushes, and manual runs so a PR update does not queue duplicate push and pull-request workflows on the single-workflow runner. The PR is ready for its final documentation check and merge; the phase exits after the merged `main` pipeline is green. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
 **Last updated:** 2026-08-23
 
 ## Next action
@@ -94,7 +94,7 @@
 | — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
 | — | Phone install & CI fix | Complete | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. Merged via PR #22. |
 | — | Drag-and-drop UI | Merged; follow-up required | PR #23 merged shared `web/boardUI.ts`/`web/moves.ts` and pointer drag. Review found that split choice is incomplete, active-turn styling is mismatched, and hands lack keyboard semantics. Evidence: typecheck, 135 tests, web build green. |
-| — | CI-first continuation | In progress | `.woodpecker.yml`, Forgejo-primary/GitHub-mirror workflow, and `docs/ci.md` are implemented in Forgejo PR #1. Woodpecker repository 7 is active with security-only trust; pipeline #1 passed at `b611843`. Local parity also passes and production build context is down from about 1.35 GB to 1.36 MB. Exit requires PR merge and a green `main` pipeline. |
+| — | CI-first continuation | In progress | `.woodpecker.yml`, Forgejo-primary/GitHub-mirror workflow, and `docs/ci.md` are implemented in Forgejo PR #1. Woodpecker repository 7 is active with security-only trust; manual pipeline #1 passed at `b611843` and PR pipeline #5 passed at `93d278d`. Local parity also passes and production build context is down from about 1.35 GB to 1.36 MB. Exit requires PR merge and a green `main` pipeline. |
 
 ## Blockers
 
