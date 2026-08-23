@@ -4,7 +4,7 @@
 
 **Active phase:** CI-first continuation enablement
 
-**Status:** The remaining release-readiness work is being moved behind the local Forgejo/Woodpecker CI gate. The Woodpecker pipeline and Forgejo-primary branch/PR workflow are implemented on `codex/ci-first-enablement`. Local parity is green: the Woodpecker 3.17 CLI accepts the configuration; root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test pass. Repository activation and the first green remote run are pending. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
+**Status:** The remaining release-readiness work is being moved behind the local Forgejo/Woodpecker CI gate. The private `liamp/Chopsticks` Forgejo repository is initialized, Forgejo PR #1 contains the migration, and this checkout now uses `battlenet` as its main upstream/default push remote. Local parity is green: the Woodpecker 3.17 CLI accepts the configuration; root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and the production-image health smoke test pass. Woodpecker activation and the first green remote run are pending. The implementation blockers from the 2026-08-17 review remain unchanged and are still detailed in `docs/handoff.md`.
 **Last updated:** 2026-08-23
 
 ## Next action
@@ -94,7 +94,7 @@
 | — | Production hardening | Complete | Merged via PR #20. Request size limits, rate limiting, room TTL cleanup, room-code copy. |
 | — | Phone install & CI fix | Complete | CI reordered to build web before tests; PWA support added; native iOS app wired to GameScreen; App Store guide written. Evidence: 128 tests pass, CI green. Merged via PR #22. |
 | — | Drag-and-drop UI | Merged; follow-up required | PR #23 merged shared `web/boardUI.ts`/`web/moves.ts` and pointer drag. Review found that split choice is incomplete, active-turn styling is mismatched, and hands lack keyboard semantics. Evidence: typecheck, 135 tests, web build green. |
-| — | CI-first continuation | In progress | `.woodpecker.yml`, Forgejo-primary workflow, and `docs/ci.md` are implemented. Woodpecker 3.17 lint and the full local parity contract pass; production build context reduced from about 1.35 GB to 1.36 MB. Exit requires Forgejo/Woodpecker activation and a green remote run. |
+| — | CI-first continuation | In progress | `.woodpecker.yml`, Forgejo-primary workflow, and `docs/ci.md` are implemented in Forgejo PR #1. Woodpecker 3.17 lint and the full local parity contract pass; production build context reduced from about 1.35 GB to 1.36 MB. Exit requires Woodpecker activation and a green remote run. |
 
 ## Blockers
 

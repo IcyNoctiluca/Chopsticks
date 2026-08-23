@@ -49,6 +49,8 @@ exported for the current shell. Do not commit either token:
 tea repo create --login battlenet --name Chopsticks --private
 git push battlenet main
 git push -u battlenet HEAD
+git config remote.pushDefault battlenet
+git branch --set-upstream-to=battlenet/main main
 
 # Find the Forgejo repository id, activate it, then enable only security trust.
 FORGEJO_REPO_ID="$(tea api --login battlenet repos/liamp/Chopsticks | jq -r .id)"
