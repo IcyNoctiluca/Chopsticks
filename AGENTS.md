@@ -19,16 +19,57 @@
 
 Each phase is delivered on its own branch, merged into `main` via a pull request, then cleaned up before the next phase begins.
 
-1. **Branch from `main`.** Ensure local `main` is up to date first (`git switch main && git pull --ff-only origin main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
+1. **Branch from `main`.** Forgejo is the working forge. Ensure local `main` is up to date first (`git switch main && git pull --ff-only battlenet main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
 2. **Work on the branch.** Commit focused, conventional commits there. Run lint, typecheck (`npm run typecheck`), and tests (`npm test`) before considering the phase complete.
-3. **Push the branch.** `git push -u origin <branch>`.
-4. **Open a PR to `main`.** Use `gh pr create --base main --head <branch>` with a summary of the phase work, evidence of meeting the exit criteria, and a request to delete the branch after merge.
-5. **Merge the PR.** Merge on GitHub (or via `gh pr merge`).
-6. **Delete the branches.** Delete the local and remote phase branches: `git push origin --delete <branch>` then `git branch -d <branch>`.
-7. **Pull the latest `main`.** `git switch main && git pull --ff-only origin main`.
-8. **Repeat from step 1** for the next phase, branching off the updated `main`.
+3. **Push the branch.** `git push -u battlenet <branch>`.
+4. **Open a Forgejo PR to `main`.** Use `tea pr create --login battlenet --repo liamp/Chopsticks --base main --head <branch>` with a summary of the phase work and evidence of meeting the exit criteria.
+5. **Wait for Woodpecker.** The `.woodpecker.yml` pipeline must pass before merge.
+6. **Merge the PR.** Merge in Forgejo (or via `tea pr merge`).
+7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` then `git branch -d <branch>`.
+8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main`.
+9. **Repeat from step 1** for the next phase, branching off the updated `main`.
 
 Never commit directly to `main`. Keep `main` always green and deployable.
+
+### Git remotes and periodic GitHub mirroring
+
+The remotes are deliberately not interchangeable:
+
+- `battlenet` (`ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git`)
+  is the working Forgejo remote watched by Woodpecker. `main` tracks
+  `battlenet/main`, and `remote.pushDefault` must remain `battlenet` so an
+  unqualified `git push` cannot accidentally publish to GitHub.
+- `origin` (`git@github.com:IcyNoctiluca/Chopsticks.git`) is a periodic public
+  mirror. Never push directly to `origin/main`, never do implementation work
+  there first, and never use GitHub to bypass the Forgejo PR and CI gate.
+
+Mirror only at a meaningful milestone, after the relevant Forgejo PRs have
+merged and `battlenet/main` is green. Use an isolated worktree and a GitHub pull
+request from the exact Forgejo `main` state:
+
+```sh
+git fetch battlenet main
+git fetch origin main
+mirror_branch="codex/github-mirror-MILESTONE"
+mirror_parent="$(mktemp -d /private/tmp/chopsticks-github-mirror.XXXXXX)"
+mirror_worktree="$mirror_parent/worktree"
+git worktree add -b "$mirror_branch" "$mirror_worktree" battlenet/main
+git -C "$mirror_worktree" push -u origin "$mirror_branch"
+mirror_pr_url="$(gh pr create --repo IcyNoctiluca/Chopsticks \
+  --base main --head "$mirror_branch" \
+  --title "chore: mirror MILESTONE from Forgejo" \
+  --body "Periodic mirror of green Forgejo main; no GitHub-first changes.")"
+gh pr checks "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --watch
+gh pr merge "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --merge --delete-branch
+git worktree remove "$mirror_worktree"
+git branch -d "$mirror_branch"
+rmdir "$mirror_parent"
+```
+
+Use a merge commit for mirror PRs, not squash or rebase: preserving the Forgejo
+commits as GitHub ancestors keeps later milestone PRs incremental. If a change
+is ever made on GitHub first, port it onto a new branch from `battlenet/main`
+and merge it through Forgejo/Woodpecker before the next mirror. See `docs/ci.md`.
 
 ## Containerised development
 
