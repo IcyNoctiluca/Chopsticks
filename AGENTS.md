@@ -31,9 +31,45 @@ Each phase is delivered on its own branch, merged into `main` via a pull request
 
 Never commit directly to `main`. Keep `main` always green and deployable.
 
-The `battlenet` remote is the working Forgejo repository watched by Woodpecker.
-`origin` is the GitHub mirror and is updated separately at meaningful milestones;
-do not use it to bypass the Forgejo PR and CI gate. See `docs/ci.md`.
+### Git remotes and periodic GitHub mirroring
+
+The remotes are deliberately not interchangeable:
+
+- `battlenet` (`ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git`)
+  is the working Forgejo remote watched by Woodpecker. `main` tracks
+  `battlenet/main`, and `remote.pushDefault` must remain `battlenet` so an
+  unqualified `git push` cannot accidentally publish to GitHub.
+- `origin` (`git@github.com:IcyNoctiluca/Chopsticks.git`) is a periodic public
+  mirror. Never push directly to `origin/main`, never do implementation work
+  there first, and never use GitHub to bypass the Forgejo PR and CI gate.
+
+Mirror only at a meaningful milestone, after the relevant Forgejo PRs have
+merged and `battlenet/main` is green. Use an isolated worktree and a GitHub pull
+request from the exact Forgejo `main` state:
+
+```sh
+git fetch battlenet main
+git fetch origin main
+mirror_branch="codex/github-mirror-MILESTONE"
+mirror_parent="$(mktemp -d /private/tmp/chopsticks-github-mirror.XXXXXX)"
+mirror_worktree="$mirror_parent/worktree"
+git worktree add -b "$mirror_branch" "$mirror_worktree" battlenet/main
+git -C "$mirror_worktree" push -u origin "$mirror_branch"
+mirror_pr_url="$(gh pr create --repo IcyNoctiluca/Chopsticks \
+  --base main --head "$mirror_branch" \
+  --title "chore: mirror MILESTONE from Forgejo" \
+  --body "Periodic mirror of green Forgejo main; no GitHub-first changes.")"
+gh pr checks "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --watch
+gh pr merge "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --merge --delete-branch
+git worktree remove "$mirror_worktree"
+git branch -d "$mirror_branch"
+rmdir "$mirror_parent"
+```
+
+Use a merge commit for mirror PRs, not squash or rebase: preserving the Forgejo
+commits as GitHub ancestors keeps later milestone PRs incremental. If a change
+is ever made on GitHub first, port it onto a new branch from `battlenet/main`
+and merge it through Forgejo/Woodpecker before the next mirror. See `docs/ci.md`.
 
 ## Containerised development
 
