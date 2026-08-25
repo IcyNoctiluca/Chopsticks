@@ -19,6 +19,36 @@
 
 Each phase is delivered on its own branch, merged into `main` via a pull request, then cleaned up before the next phase begins.
 
+### Standard workflow when the user asks to merge changes
+
+Treat requests such as "merge this", "commit and merge", or "create a PR and
+merge it" as authorization for the complete Forgejo delivery workflow below:
+
+1. **Protect the primary checkout.** Inspect its status and preserve all user
+   changes. Do not edit, stash, discard, or commit unrelated work there.
+2. **Start from current Forgejo `main`.** Fetch `battlenet/main`, then create a
+   focused `codex/<topic>` branch in a new isolated worktree based on that
+   commit. Apply or reproduce only the requested changes in the worktree.
+3. **Reconcile concurrent changes.** Fetch `battlenet/main` again before
+   opening the PR. If it advanced, merge it into the worktree branch, resolve
+   every conflict deliberately, and rerun the relevant checks. Never resolve a
+   conflict by silently discarding either side.
+4. **Commit and open a Forgejo PR.** Use focused conventional commits, push the
+   branch to `battlenet`, and open the PR with `tea`. Do not push directly to
+   `main`.
+5. **Require CI before merge.** Wait for the current PR commit's Woodpecker
+   pipeline to pass. Fix failures on the same worktree branch and repeat until
+   green; never bypass or merge around the gate.
+6. **Merge and prove `main`.** Merge the Forgejo PR with a merge commit, then
+   wait for the resulting `battlenet/main` Woodpecker pipeline to pass.
+7. **Clean up.** Remove the remote feature branch, isolated worktree, local
+   feature branch, and temporary worktree directory. Finally fast-forward the
+   primary checkout's `main` from `battlenet/main` without disturbing unrelated
+   user work.
+
+This workflow does not automatically authorize a GitHub mirror. Mirror only
+under the milestone policy below.
+
 1. **Branch from `main`.** Forgejo is the working forge. Ensure local `main` is up to date first (`git switch main && git pull --ff-only battlenet main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
 2. **Work on the branch.** Commit focused, conventional commits there. Run lint, typecheck (`npm run typecheck`), and tests (`npm test`) before considering the phase complete.
 3. **Push the branch.** `git push -u battlenet <branch>`.
