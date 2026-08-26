@@ -5,6 +5,15 @@ import { MatchServer } from "../server/matchServer.js";
 import { ChopsticksWSServer } from "../server/ws.js";
 import { getLegalMoves, type Move } from "../src/index.js";
 
+const TOURNAMENT_CYCLE: Move[] = [
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "right" },
+  { type: "redistribute", player: "B", right: 1, left: 1 },
+];
+
 interface WSEvent {
   type: string;
   [key: string]: unknown;
@@ -98,6 +107,7 @@ describe("Chopsticks WebSocket transport", () => {
 
     const state = await q.waitFor("state");
     expect(state.phase).toBe("lobby");
+    expect(state.isDraw).toBe(false);
     ws.close();
   });
 
@@ -186,6 +196,42 @@ describe("Chopsticks WebSocket transport", () => {
     expect(synced.roomCode).toBe(roomCode);
     expect(synced.phase).toBe("lobby");
     ws.close();
+  });
+
+  it("broadcasts a tournament draw to both WebSocket participants", async () => {
+    const alice = new WebSocket(env.url);
+    const bob = new WebSocket(env.url);
+    const aliceQ = createMessageQueue(alice);
+    const bobQ = createMessageQueue(bob);
+    await Promise.all([alice, bob].map((socket) => new Promise<void>((resolve, reject) => {
+      socket.once("open", resolve);
+      socket.once("error", reject);
+    })));
+
+    send(alice, { type: "create", clientId: "alice", displayName: "Alice", rulesetId: "classic-tournament-v1" });
+    const created = await aliceQ.waitFor("created");
+    const roomCode = created.roomCode as string;
+    await aliceQ.waitFor("state");
+    send(bob, { type: "join", roomCode, clientId: "bob", displayName: "Bob" });
+    await bobQ.waitFor("joined");
+    await Promise.all([aliceQ.waitFor("state"), bobQ.waitFor("state")]);
+
+    for (const move of [...TOURNAMENT_CYCLE, ...TOURNAMENT_CYCLE]) {
+      const queue = move.player === "A" ? aliceQ : bobQ;
+      const socket = move.player === "A" ? alice : bob;
+      const expectedMoveNumber = (env.matchServer.sync(roomCode, move.player === "A" ? "alice" : "bob")).expectedMoveNumber;
+      send(socket, { type: "move", roomCode, clientId: move.player === "A" ? "alice" : "bob", move, expectedMoveNumber });
+      await queue.waitFor("move-accepted");
+      await Promise.all([aliceQ.waitFor("state"), bobQ.waitFor("state")]);
+    }
+
+    send(alice, { type: "sync", roomCode, clientId: "alice" });
+    const synced = await aliceQ.waitFor("state");
+    expect(synced.phase).toBe("finished");
+    expect(synced.winner).toBeNull();
+    expect(synced.isDraw).toBe(true);
+    alice.close();
+    bob.close();
   });
 
   it("rejects a malformed move at the transport boundary", async () => {

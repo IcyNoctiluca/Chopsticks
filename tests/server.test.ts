@@ -2,6 +2,15 @@ import { describe, it, expect } from "vitest";
 import { MatchServer, MatchServerError, ENGINE_VERSION, SUPPORTED_RULESETS } from "../server/matchServer.js";
 import { getWinner, getLegalMoves, replay, createRecord, type Move } from "../src/index.js";
 
+const TOURNAMENT_CYCLE: Move[] = [
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+  { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "right" },
+  { type: "redistribute", player: "B", right: 1, left: 1 },
+];
+
 function newServer(): MatchServer {
   return new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 1000 });
 }
@@ -133,6 +142,26 @@ describe("MatchServer: reconnect / sync", () => {
     for (const m of history) state = applyMoveForTest(state, m);
     const authoritative = s.sync(r.roomCode, "alice").state;
     expect(state).toEqual(authoritative);
+  });
+
+  it("preserves a tournament draw in sync responses after reconnect", () => {
+    const s = newServer();
+    const room = s.createRoom(
+      { clientId: "alice", displayName: "Alice" },
+      { rulesetId: "classic-tournament-v1" },
+    );
+    s.joinRoom(room.roomCode, "bob", "Bob");
+
+    for (const move of [...TOURNAMENT_CYCLE, ...TOURNAMENT_CYCLE]) {
+      const clientId = move.player === "A" ? "alice" : "bob";
+      const sync = s.sync(room.roomCode, clientId);
+      s.submitMove(room.roomCode, clientId, move, sync.expectedMoveNumber);
+    }
+
+    const sync = s.sync(room.roomCode, "alice");
+    expect(sync.phase).toBe("finished");
+    expect(sync.winner).toBeNull();
+    expect(sync.isDraw).toBe(true);
   });
 });
 

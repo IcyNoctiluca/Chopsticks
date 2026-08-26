@@ -1,5 +1,26 @@
 # Repository review and continuation handoff
 
+## Continuation update — 2026-08-26
+
+`codex/online-release-blockers` implements findings 1–7 from this review:
+
+- Create/Join now await an open WebSocket, lock duplicate lobby actions, and
+  restore retry controls on connection failure. Vite proxies `/ws` to the local
+  match server by default.
+- The local and online web clients render every engine-derived redistribution
+  choice, preserving left/right hand identity.
+- Sync and WebSocket state messages carry `winner` and `isDraw`; the online
+  client renders a threefold-repetition draw as terminal.
+- Lobby and game are mutually exclusive, Add AI is host/lobby-only, online rows
+  are player-relative, and hands are native button controls with a
+  source-then-target keyboard fallback alongside drag interaction.
+
+Container verification passed: typecheck, engine/server/web builds, shared iOS
+typecheck, production-image health smoke test, and 138 tests.
+A two-tab browser smoke test passed for a fresh Create, fresh Join, lobby
+visibility, player-relative rows, and button controls. Forgejo PR/Woodpecker
+evidence is still required before this update is merged.
+
 This is the authoritative pickup document for the repository. It supersedes the
 2026-08-16 review, whose blockers were fixed by PRs #15-#23.
 

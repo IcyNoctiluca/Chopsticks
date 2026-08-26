@@ -1,7 +1,8 @@
 import { createSession, getState, playHumanMove, advanceAITurns, undoInSession, canUndoInSession, startNextGame } from "../session/session.js";
-import { getLegalMoves, getWinner, type Move } from "../src/index.js";
+import { getLegalMoves, getWinner, type Move, type RedistributeMove } from "../src/index.js";
 import { bindBoard } from "./boardUI.js";
 import { movesEqual } from "./moves.js";
+import { renderRedistributionChoices } from "./splitPicker.js";
 
 let session = createSession({
   playerA: { name: "Player A", type: "human" },
@@ -26,7 +27,6 @@ function main(): void {
   document.getElementById("ai-toggle")!.addEventListener("change", onAIToggle);
   document.getElementById("btn-rules")!.addEventListener("click", toggleRules);
   document.getElementById("btn-close-rules")!.addEventListener("click", toggleRules);
-  document.getElementById("btn-split")?.addEventListener("click", onSplit);
 }
 
 function onAIToggle(e: Event): void {
@@ -63,18 +63,6 @@ function onNewMatch(): void {
   });
   session = advanceAITurns(session);
   render();
-}
-
-function onSplit(): void {
-  const state = getState(session);
-  if (state.status === "finished") return;
-  if (governorIsAITurn(session, aiForB)) return;
-
-  const moves = getLegalMoves(state).filter((m): m is Move & { type: "redistribute" } => m.type === "redistribute");
-  if (moves.length === 0) return;
-
-  const move = moves[0]!;
-  submitMove(move);
 }
 
 function toggleRules(): void {
@@ -127,12 +115,19 @@ function render(): void {
     finished: winner !== null,
     interactive: !governorIsAITurn(session, aiForB),
     onMove: submitMove,
+    onInteractionStatus: (message) => {
+      statusEl.textContent = message;
+    },
   });
 
   const splitControl = document.getElementById("split-control")!;
-  const canSplit = !winner && !governorIsAITurn(session, aiForB) && getLegalMoves(state).some((m) => m.type === "redistribute");
-  splitControl.hidden = !canSplit;
+  const splitMoves = !winner && !governorIsAITurn(session, aiForB)
+    ? getLegalMoves(state).filter((m): m is RedistributeMove => m.type === "redistribute")
+    : [];
+  splitControl.hidden = splitMoves.length === 0;
+  const splitOptions = document.getElementById("split-options");
+  if (splitOptions) renderRedistributionChoices(splitOptions, splitMoves, submitMove);
 
   const undoBtn = document.getElementById("btn-undo")!;
-  undoBtn.classList.toggle("disabled", !canUndoInSession(session));
+  undoBtn.disabled = !canUndoInSession(session);
 }

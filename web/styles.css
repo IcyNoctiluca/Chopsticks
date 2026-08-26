@@ -16,6 +16,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -87,10 +89,14 @@ h1 {
   user-select: none;
   -webkit-user-select: none;
   transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  color: var(--text);
+  font: inherit;
+  padding: 0;
 }
 
 .hand.draggable {
   cursor: grab;
+  touch-action: none;
 }
 
 .hand.draggable:active {
@@ -114,13 +120,24 @@ h1 {
   pointer-events: none;
 }
 
-.player-row.opponent .hand-label {
+.player-row.opponent .hand-label,
+.player-row.opponent .hand-inner {
   transform: rotate(180deg);
 }
 
-.hand.active {
+.player-row.active .hand {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(106, 166, 255, 0.15);
+}
+
+.hand:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.hand.selected {
+  border-color: var(--good);
+  box-shadow: 0 0 0 5px rgba(110, 231, 183, 0.2);
 }
 
 .hand.dead {
@@ -156,7 +173,14 @@ h1 {
   margin: 0 0 12px;
 }
 
-#split-control button {
+.split-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.split-options button {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
@@ -165,7 +189,7 @@ h1 {
   cursor: pointer;
   font-size: 0.95rem;
 }
-#split-control button:hover { border-color: var(--accent); }
+.split-options button:hover { border-color: var(--accent); }
 
 #controls {
   display: flex;
@@ -276,3 +300,7 @@ h1 {
   font-size: 0.8rem;
 }
 .room-info button:hover { border-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}

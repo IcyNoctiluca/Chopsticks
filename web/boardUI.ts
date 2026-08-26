@@ -14,12 +14,17 @@ export interface BoardUIOptions {
   readonly turn: PlayerId;
   readonly finished: boolean;
   readonly interactive: boolean;
+  /** Which player is rendered closest to the viewer. Defaults to A for local play. */
+  readonly bottomPlayer?: PlayerId;
   readonly onMove: (move: Move) => void;
+  readonly onInteractionStatus?: (message: string) => void;
 }
 
 export function renderBoard(options: BoardUIOptions): void {
-  renderRow("opponent", "B", options.state.players.B, options.turn === "B", options);
-  renderRow("player", "A", options.state.players.A, options.turn === "A", options);
+  const bottomPlayer = options.bottomPlayer ?? "A";
+  const topPlayer = bottomPlayer === "A" ? "B" : "A";
+  renderRow("opponent", topPlayer, options.state.players[topPlayer], options.turn === topPlayer, options);
+  renderRow("player", bottomPlayer, options.state.players[bottomPlayer], options.turn === bottomPlayer, options);
 }
 
 function renderRow(
@@ -39,7 +44,7 @@ function renderRow(
     const value = hands[hand];
     const dead = value === 0;
     const draggable = options.interactive && !options.finished && player === options.turn && !dead;
-    const el = createHandElement(player, hand, value, dead, draggable);
+    const el = createHandElement(player, hand, value, dead, draggable, options);
     row.appendChild(el);
   }
 }
@@ -49,15 +54,38 @@ let drag: DragState | null = null;
 
 export function bindBoard(options: BoardUIOptions): void {
   currentOptions = options;
+  if (
+    selectedSource &&
+    (!options.interactive || options.finished || selectedSource.player !== options.turn || options.state.players[selectedSource.player][selectedSource.hand] === 0)
+  ) {
+    selectedSource = null;
+  }
   renderBoard(options);
 }
 
-function createHandElement(player: PlayerId, hand: Hand, value: number, dead: boolean, draggable: boolean): HTMLElement {
-  const el = document.createElement("div");
+type SelectedSource = { player: PlayerId; hand: Hand };
+let selectedSource: SelectedSource | null = null;
+
+function createHandElement(
+  player: PlayerId,
+  hand: Hand,
+  value: number,
+  dead: boolean,
+  draggable: boolean,
+  options: BoardUIOptions,
+): HTMLButtonElement {
+  const el = document.createElement("button");
+  el.type = "button";
   el.className = "hand" + (dead ? " dead" : "") + (draggable ? " draggable" : "");
   el.dataset.player = player;
   el.dataset.hand = hand;
-  el.setAttribute("aria-label", `${player} ${hand} ${value}`);
+  const selectableTarget = options.interactive && !options.finished && !dead;
+  el.disabled = !selectableTarget;
+  el.setAttribute("aria-label", `${player} ${hand} hand: ${value}`);
+  if (selectedSource?.player === player && selectedSource.hand === hand) {
+    el.classList.add("selected");
+    el.setAttribute("aria-pressed", "true");
+  }
 
   const inner = document.createElement("div");
   inner.className = "hand-inner";
@@ -72,8 +100,44 @@ function createHandElement(player: PlayerId, hand: Hand, value: number, dead: bo
   if (draggable) {
     el.addEventListener("pointerdown", onPointerDown);
   }
+  if (selectableTarget) el.addEventListener("click", onHandClick);
 
   return el;
+}
+
+function onHandClick(event: MouseEvent): void {
+  const handEl = event.currentTarget as HTMLElement;
+  const player = handEl.dataset.player as PlayerId;
+  const hand = handEl.dataset.hand as Hand;
+  if (!player || !hand || !currentOptions) return;
+
+  if (!selectedSource) {
+    if (player !== currentOptions.turn) {
+      currentOptions.onInteractionStatus?.("Select one of your living hands first.");
+      return;
+    }
+    selectedSource = { player, hand };
+    currentOptions.onInteractionStatus?.(`Selected ${player} ${hand}. Choose a living hand to tap.`);
+    renderBoard(currentOptions);
+    return;
+  }
+
+  if (selectedSource.player === player && selectedSource.hand === hand) {
+    selectedSource = null;
+    currentOptions.onInteractionStatus?.("Selection cancelled.");
+    renderBoard(currentOptions);
+    return;
+  }
+
+  const move: Move = {
+    type: "tap",
+    player: selectedSource.player,
+    source: selectedSource.hand,
+    targetPlayer: player,
+    target: hand,
+  };
+  selectedSource = null;
+  currentOptions.onMove(move);
 }
 
 function onPointerDown(e: PointerEvent): void {
@@ -132,6 +196,7 @@ function onPointerUp(e: PointerEvent): void {
         targetPlayer,
         target: targetHand,
       };
+      selectedSource = null;
       currentOptions?.onMove(move);
     }
   }

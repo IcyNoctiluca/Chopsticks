@@ -27,8 +27,8 @@ type ServerMessage =
   | { type: "created"; roomCode: RoomCode; playerId: PlayerId; state: GameState }
   | { type: "joined"; roomCode: RoomCode; playerId: PlayerId; state: GameState; history: Move[] }
   | { type: "ai-added"; roomCode: RoomCode; playerId: PlayerId }
-  | { type: "move-accepted"; roomCode: RoomCode; state: GameState; moveNumber: number; winner: PlayerId | null }
-  | { type: "state"; roomCode: RoomCode; state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase }
+  | { type: "move-accepted"; roomCode: RoomCode; state: GameState; moveNumber: number; winner: PlayerId | null; isDraw: boolean }
+  | { type: "state"; roomCode: RoomCode; state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase; winner: PlayerId | null; isDraw: boolean }
   | { type: "error"; code: string; message: string };
 
 interface SocketMeta {
@@ -110,7 +110,14 @@ export class ChopsticksWSServer {
       case "move": {
         const params = validateMoveBody(msg);
         const result = this.matchServer.submitMove(msg.roomCode, params.clientId, params.move, params.expectedMoveNumber);
-        this.send(ws, { type: "move-accepted", roomCode: msg.roomCode, state: result.state, moveNumber: result.moveNumber, winner: result.winner });
+        this.send(ws, {
+          type: "move-accepted",
+          roomCode: msg.roomCode,
+          state: result.state,
+          moveNumber: result.moveNumber,
+          winner: result.winner,
+          isDraw: result.isDraw,
+        });
         this.broadcastState(msg.roomCode);
         break;
       }
@@ -124,6 +131,8 @@ export class ChopsticksWSServer {
           expectedMoveNumber: result.expectedMoveNumber,
           expectedTurn: result.expectedTurn,
           phase: result.phase,
+          winner: result.winner,
+          isDraw: result.isDraw,
         });
         break;
       }
@@ -150,6 +159,8 @@ export class ChopsticksWSServer {
           expectedMoveNumber: result.expectedMoveNumber,
           expectedTurn: result.expectedTurn,
           phase: result.phase,
+          winner: result.winner,
+          isDraw: result.isDraw,
         });
       } catch {
         // Room may have been abandoned; stop broadcasting.

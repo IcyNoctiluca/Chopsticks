@@ -19,7 +19,7 @@ The server is the single authority. Clients submit intended moves; the server lo
 ## Clients
 
 - **Local web client** (`web/index.html`): two-player or human-vs-AI matches running entirely in the browser using the shared engine/session APIs. Build with `npm run web:build`.
-- **Online web client** (`web/online.html`): connects to the match server over WebSocket to create/join rooms and play human-vs-human or human-vs-AI matches. Set `VITE_SERVER_URL=wss://your-server/ws` at build time to point to a remote server; defaults to the same-origin `/ws`.
+- **Online web client** (`web/online.html`): connects to the match server over WebSocket to create/join rooms and play human-vs-human or human-vs-AI matches. Set `VITE_SERVER_URL=wss://your-server/ws` at build time to point to a remote server; production defaults to same-origin `/ws`, while Vite development proxies `/ws` to `ws://localhost:3000` (or `CHOPSTICKS_SERVER_URL`).
 - **iOS React Native app** (`ios-app/`): shares the engine/session APIs and typechecks; requires a macOS/Xcode environment for device/simulator builds.
 
 ### HTTP endpoints
@@ -54,8 +54,8 @@ Server → client:
 | `created` | `roomCode`, `playerId`, `state` |
 | `joined` | `roomCode`, `playerId`, `state`, `history` |
 | `ai-added` | `roomCode`, `playerId` |
-| `move-accepted` | `roomCode`, `state`, `moveNumber`, `winner` |
-| `state` | Broadcast to all room participants after any change |
+| `move-accepted` | `roomCode`, `state`, `moveNumber`, `winner`, `isDraw` |
+| `state` | Broadcast to all room participants after any change; includes `phase`, `winner`, and `isDraw` |
 | `error` | `code` matches `MatchServerError` codes (`illegal-move`, `stale-move`, etc.) |
 
 Run locally: `docker compose exec dev npm run serve` (defaults to `PORT=3000`).
@@ -149,10 +149,10 @@ The server is a small `node:http` process with the `ws` runtime dependency for r
 - [x] Clients cannot authoritatively alter state (server validates every move via the engine) — integration tested.
 - [x] Reconnect and stale-move behaviour exercised by automated tests (`tests/server.test.ts`, `tests/server-ws.test.ts`).
 - [x] A local web app lets two people start, finish, restart, and undo a game without developer tools (Phase 06).
-- [ ] The online web client reliably creates/joins on the first action, hides lobby-only controls during play, presents all legal redistributions, and renders tournament draws. See `docs/handoff.md`.
+- [x] The online web client reliably creates/joins on the first action, hides lobby-only controls during play, presents all legal redistributions, renders tournament draws, and supports player-relative keyboard/touch controls. Forgejo CI evidence is required before release signoff; see `docs/handoff.md`.
 - [x] At least one AI difficulty completes a game through the engine API (Phase 05, random/heuristic/solved).
 - [x] Privacy, failure handling, deployment, and support documented (this file).
-- [x] Containerised development; reproducible builds; 135 automated tests passing locally; CI is configured for typecheck, tests, engine/server/web builds, iOS-app typecheck, and a production Docker image smoke test.
+- [x] Containerised development; reproducible builds; 138 automated tests passing locally; CI is configured for typecheck, tests, engine/server/web builds, iOS-app typecheck, and a production Docker image smoke test.
 
 **Known limitations / follow-ups (out of MVP scope):**
 - Current web release blockers and their acceptance checks are maintained in `docs/handoff.md`.

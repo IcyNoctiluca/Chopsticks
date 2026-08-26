@@ -1,14 +1,17 @@
 import { bindBoard } from "./boardUI.js";
 import { movesEqual } from "./moves.js";
+import { renderRedistributionChoices } from "./splitPicker.js";
 import { getLegalMoves } from "../src/index.js";
-import type { GameState, Move, PlayerId } from "../src/index.js";
+import type { GameState, Move, PlayerId, RedistributeMove } from "../src/index.js";
+
+type MatchPhase = "lobby" | "playing" | "finished" | "abandoned";
 
 type ServerMessage =
   | { type: "created"; roomCode: string; playerId: PlayerId; state: GameState }
   | { type: "joined"; roomCode: string; playerId: PlayerId; state: GameState; history: Move[] }
   | { type: "ai-added"; roomCode: string; playerId: PlayerId }
-  | { type: "move-accepted"; roomCode: string; state: GameState; moveNumber: number; winner: PlayerId | null }
-  | { type: "state"; roomCode: string; state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: "lobby" | "playing" | "finished" | "abandoned" }
+  | { type: "move-accepted"; roomCode: string; state: GameState; moveNumber: number; winner: PlayerId | null; isDraw: boolean }
+  | { type: "state"; roomCode: string; state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase; winner: PlayerId | null; isDraw: boolean }
   | { type: "error"; code: string; message: string };
 
 type ClientMessage =
@@ -39,8 +42,12 @@ class OnlineClient {
   private playerId: PlayerId | null = null;
   private expectedMoveNumber = 0;
   private state: GameState | null = null;
-  private phase: ServerMessage["phase"] = "lobby";
+  private phase: MatchPhase = "lobby";
+  private isDraw = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connecting: Promise<void> | null = null;
+  private lobbyActionInFlight = false;
+  private aiActionInFlight = false;
 
   constructor() {
     if ("serviceWorker" in navigator) {
@@ -49,35 +56,62 @@ class OnlineClient {
     this.bindLobby();
   }
 
-  connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
-    const url = getServerUrl();
-    this.ws = new WebSocket(url);
-    this.ws.onopen = () => {
-      this.clearReconnect();
-      if (this.roomCode && this.playerId) {
-        this.send({ type: "sync", roomCode: this.roomCode, clientId: this.clientId });
-      }
-    };
-    this.ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data as string) as ServerMessage;
-        this.handleMessage(msg);
-      } catch {
-        this.setStatus("Received invalid message from server");
-      }
-    };
-    this.ws.onclose = () => {
-      this.scheduleReconnect();
-    };
-    this.ws.onerror = () => {
-      this.setStatus("Connection error");
-    };
+  private connect(): Promise<void> {
+    if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (this.connecting) return this.connecting;
+
+    const socket = new WebSocket(getServerUrl());
+    this.ws = socket;
+    this.connecting = new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => fail(new Error("Connection timed out")), 8_000);
+      const succeed = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        this.connecting = null;
+        resolve();
+      };
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        this.connecting = null;
+        if (socket.readyState === WebSocket.CONNECTING) socket.close();
+        reject(error);
+      };
+
+      socket.onopen = () => {
+        this.clearReconnect();
+        succeed();
+        if (this.roomCode && this.playerId) {
+          this.send({ type: "sync", roomCode: this.roomCode, clientId: this.clientId });
+        }
+      };
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data as string) as ServerMessage;
+          this.handleMessage(msg);
+        } catch {
+          this.setStatus("Received invalid message from server");
+        }
+      };
+      socket.onclose = () => {
+        fail(new Error("Connection closed"));
+        if (this.ws === socket && this.roomCode && this.playerId) this.scheduleReconnect();
+      };
+      socket.onerror = () => {
+        fail(new Error("Connection error"));
+      };
+    });
+    return this.connecting;
   }
 
   private scheduleReconnect(): void {
     this.clearReconnect();
-    this.reconnectTimer = setTimeout(() => this.connect(), 2000);
+    this.reconnectTimer = setTimeout(() => {
+      void this.connect().catch(() => void 0);
+    }, 2000);
   }
 
   private clearReconnect(): void {
@@ -90,7 +124,10 @@ class OnlineClient {
   private send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
+      return;
     }
+    this.setStatus("Connection is not ready. Retrying…");
+    void this.connect().catch(() => void 0);
   }
 
   private handleMessage(msg: ServerMessage): void {
@@ -101,6 +138,9 @@ class OnlineClient {
         this.state = msg.state;
         this.expectedMoveNumber = 0;
         this.phase = "lobby";
+        this.isDraw = false;
+        localStorage.setItem(`chopsticks-room-${msg.roomCode}`, msg.playerId);
+        this.finishLobbyAction();
         this.showGame();
         this.render();
         break;
@@ -110,26 +150,34 @@ class OnlineClient {
         this.state = msg.state;
         this.expectedMoveNumber = msg.history.length;
         this.phase = "playing";
+        this.isDraw = false;
+        localStorage.setItem(`chopsticks-room-${msg.roomCode}`, msg.playerId);
+        this.finishLobbyAction();
         this.showGame();
         this.render();
         break;
       case "ai-added":
+        this.aiActionInFlight = false;
         break;
       case "move-accepted":
         this.state = msg.state;
         this.expectedMoveNumber = msg.moveNumber;
+        this.isDraw = msg.isDraw;
         this.render();
         break;
       case "state":
         this.state = msg.state;
         this.expectedMoveNumber = msg.expectedMoveNumber;
         this.phase = msg.phase;
+        this.isDraw = msg.isDraw;
         if (!this.playerId) {
           this.playerId = this.inferPlayerId();
         }
         this.render();
         break;
       case "error":
+        this.aiActionInFlight = false;
+        this.finishLobbyAction();
         this.setStatus(`Error: ${msg.message}`);
         break;
     }
@@ -148,34 +196,55 @@ class OnlineClient {
     const aiBtn = document.getElementById("btn-add-ai") as HTMLButtonElement | null;
     const codeInput = document.getElementById("room-code") as HTMLInputElement | null;
     const rulesetSelect = document.getElementById("ruleset") as HTMLSelectElement | null;
-    const splitBtn = document.getElementById("btn-split-online") as HTMLButtonElement | null;
-
     createBtn?.addEventListener("click", () => {
-      this.connect();
       const rulesetId = rulesetSelect?.value as "classic-v1" | "classic-tournament-v1";
-      this.send({ type: "create", clientId: this.clientId, displayName: this.displayName, rulesetId });
+      void this.sendLobbyAction({ type: "create", clientId: this.clientId, displayName: this.displayName, rulesetId });
     });
 
     joinBtn?.addEventListener("click", () => {
       const code = codeInput?.value.trim();
       if (!code) return;
-      this.connect();
-      this.roomCode = code;
-      this.send({ type: "join", roomCode: code, clientId: this.clientId, displayName: this.displayName });
+      void this.sendLobbyAction({ type: "join", roomCode: code, clientId: this.clientId, displayName: this.displayName });
     });
 
     aiBtn?.addEventListener("click", () => {
-      if (!this.roomCode) return;
+      if (!this.roomCode || this.aiActionInFlight) return;
+      this.aiActionInFlight = true;
+      aiBtn.disabled = true;
       this.send({ type: "add-ai", roomCode: this.roomCode, difficulty: "random" });
     });
 
-    splitBtn?.addEventListener("click", () => this.onSplit());
+  }
+
+  private async sendLobbyAction(message: Extract<ClientMessage, { type: "create" | "join" }>): Promise<void> {
+    if (this.lobbyActionInFlight) return;
+    this.lobbyActionInFlight = true;
+    this.setLobbyBusy(true);
+    this.setStatus("Connecting to match server…");
+    try {
+      await this.connect();
+      this.send(message);
+    } catch {
+      this.finishLobbyAction();
+      this.setStatus("Could not connect. Check the server and try again.");
+    }
+  }
+
+  private setLobbyBusy(busy: boolean): void {
+    for (const id of ["btn-create", "btn-join"]) {
+      const button = document.getElementById(id) as HTMLButtonElement | null;
+      if (button) button.disabled = busy;
+    }
+  }
+
+  private finishLobbyAction(): void {
+    this.lobbyActionInFlight = false;
+    this.setLobbyBusy(false);
   }
 
   private showGame(): void {
     document.getElementById("lobby")?.setAttribute("hidden", "");
     document.getElementById("game")?.removeAttribute("hidden");
-    document.getElementById("btn-add-ai")?.removeAttribute("hidden");
     const codeDisplay = document.getElementById("room-code-display");
     if (codeDisplay && this.roomCode) {
       codeDisplay.textContent = `Room: ${this.roomCode}`;
@@ -205,10 +274,13 @@ class OnlineClient {
     const state = this.state;
     const winner = state.winner;
     const active = state.turn;
-    const myTurn = this.playerId === active && this.phase === "playing";
+    const finished = this.phase === "finished" || this.phase === "abandoned";
+    const myTurn = this.playerId === active && this.phase === "playing" && !this.isDraw;
 
     const statusEl = document.getElementById("status")!;
-    if (winner) {
+    if (this.phase === "finished" && this.isDraw) {
+      statusEl.textContent = "Draw by threefold repetition.";
+    } else if (winner) {
       statusEl.textContent = `Player ${winner} wins!`;
     } else if (this.phase === "lobby") {
       statusEl.textContent = `Room ${this.roomCode} — waiting for opponent…`;
@@ -221,14 +293,24 @@ class OnlineClient {
     bindBoard({
       state,
       turn: active,
-      finished: winner !== null || this.phase === "abandoned",
+      finished,
       interactive: myTurn,
+      bottomPlayer: this.playerId ?? "A",
       onMove: (move) => this.submitMove(move),
+      onInteractionStatus: (message) => this.setStatus(message),
     });
 
     const splitControl = document.getElementById("split-control")!;
-    const canSplit = myTurn && getLegalMoves(state).some((m) => m.type === "redistribute");
-    splitControl.hidden = !canSplit;
+    const splitMoves = myTurn ? getLegalMoves(state).filter((m): m is RedistributeMove => m.type === "redistribute") : [];
+    splitControl.hidden = splitMoves.length === 0;
+    const splitOptions = document.getElementById("split-options");
+    if (splitOptions) renderRedistributionChoices(splitOptions, splitMoves, (move) => this.submitMove(move));
+
+    const addAi = document.getElementById("btn-add-ai") as HTMLButtonElement | null;
+    if (addAi) {
+      addAi.hidden = !(this.phase === "lobby" && this.playerId === "A");
+      addAi.disabled = this.aiActionInFlight;
+    }
   }
 
   private submitMove(move: Move): void {
@@ -241,13 +323,6 @@ class OnlineClient {
       move,
       expectedMoveNumber: this.expectedMoveNumber,
     });
-  }
-
-  private onSplit(): void {
-    if (!this.state || !this.roomCode) return;
-    const moves = getLegalMoves(this.state).filter((m): m is Move & { type: "redistribute" } => m.type === "redistribute");
-    if (moves.length === 0) return;
-    this.submitMove(moves[0]!);
   }
 
   private setStatus(text: string): void {
