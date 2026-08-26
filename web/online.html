@@ -29,20 +29,21 @@
           <input id="room-code" type="text" placeholder="Room code" aria-label="Room code" />
           <button id="btn-join" type="button">Join room</button>
         </div>
-        <button id="btn-add-ai" type="button" hidden>Add AI opponent</button>
       </section>
 
       <section id="game" hidden>
         <div id="room-info" class="room-info">
           <span id="room-code-display"></span>
           <button id="btn-copy-code" type="button">Copy code</button>
+          <button id="btn-add-ai" type="button" hidden>Add AI opponent</button>
         </div>
         <section id="board" aria-label="Game board">
           <div id="opponent" class="player-row opponent" data-player="B"></div>
           <div id="player" class="player-row player" data-player="A"></div>
         </section>
         <div id="split-control" hidden>
-          <button id="btn-split-online" type="button">Split (revive)</button>
+          <p>Choose a redistribution:</p>
+          <div id="split-options" class="split-options"></div>
         </div>
         <nav id="controls">
           <button id="btn-leave" type="button">Leave room</button>

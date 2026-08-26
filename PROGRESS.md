@@ -4,16 +4,15 @@
 
 **Active phase:** Post-roadmap release-blocker implementation
 
-**Status:** CI-first continuation enablement is complete. Forgejo PR #1 merged as `695a42f`, and Woodpecker `main` pipeline #8 passed the full root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and production-image health smoke test. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false); this checkout uses `battlenet` as its `main` upstream and default push remote. GitHub was updated separately through green mirror PR #25, merged as `8b64116`. Pipeline triggers are limited to pull requests, `main` pushes, and manual runs so a PR update does not queue duplicate push and pull-request workflows on the single-workflow runner. Remaining implementation blockers from the 2026-08-17 review are detailed in `docs/handoff.md`.
-**Last updated:** 2026-08-25
+**Status:** CI-first continuation enablement is complete. Forgejo PR #1 merged as `695a42f`, and Woodpecker `main` pipeline #8 passed the full root typecheck, engine/server/web builds, 135 tests, shared iOS-app typecheck, and production-image health smoke test. Private repository `liamp/Chopsticks` is active as Woodpecker repository 7 with trust limited to `security: true` (`volumes` and `network` remain false); this checkout uses `battlenet` as its `main` upstream and default push remote. GitHub was updated separately through green mirror PR #25, merged as `8b64116`. Pipeline triggers are limited to pull requests, `main` pushes, and manual runs so a PR update does not queue duplicate push and pull-request workflows on the single-workflow runner. The online-client release-blocker implementation is now complete on `codex/online-release-blockers` and awaits Forgejo PR/CI evidence.
+**Last updated:** 2026-08-26
 
 ## Next action
 
-1. Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.
-2. Add an explicit identity-aware redistribution picker in both web clients.
-3. Carry tournament draw results through sync/WebSocket/client rendering.
-4. Make the online board player-relative and add keyboard/touch accessibility.
-5. Only after those items pass CI and a two-browser playthrough should the web product be called release-ready. PWA offline proof, native App Store work, and public-service hardening remain separate follow-ups.
+1. Open a Forgejo PR for `codex/online-release-blockers`, require Woodpecker green, then merge via the local Forgejo workflow.
+2. Complete match-level completion presentation in local/iOS clients.
+3. Prove built-PWA offline play and complete native device/TestFlight/App Store verification.
+4. Address public-service hardening and durable shared-room storage before a public deployment.
 
 ## Decision log
 
@@ -44,6 +43,7 @@
 | 2026-08-17 | Release-readiness claim superseded by current-state review | Accepted | Implementation milestones remain complete, but the product is not yet signed off for public online/PWA/App Store release. Functional UI blockers and exact acceptance checks are recorded in `docs/handoff.md`. |
 | 2026-08-23 | Forgejo/Woodpecker is the working CI path | Accepted | `git.battlenet.internal` becomes the working forge and `ci.battlenet.internal` the primary CI gate. `.woodpecker.yml` mirrors the established verification contract and adds a production-image health smoke test. GitHub is updated only periodically through a merge-commit PR from green Forgejo `main`; direct pushes to `origin/main` and GitHub-first implementation are prohibited. Nested dependencies and native build outputs are excluded from Docker context, reducing the production build context from about 1.35 GB to 1.36 MB. |
 | 2026-08-25 | Merge requests use isolated worktrees | Accepted | When the user asks to merge changes, preserve the primary checkout, create a fresh branch and worktree from `battlenet/main`, reconcile concurrent changes and conflicts, deliver through a green Forgejo PR, prove merged `main`, then clean up the branch and worktree. GitHub mirroring remains a separate milestone operation. |
+| 2026-08-26 | Online release blockers implemented | Pending Forgejo CI | `codex/online-release-blockers` makes connection setup awaitable and locks Create/Join actions, proxies Vite `/ws` locally, hides lobby-only controls correctly, offers every engine-derived redistribution choice, propagates tournament draws through sync/WebSocket/client rendering, uses player-relative online board rows, and adds button/keyboard/touch interaction support. Container typecheck, engine/server/web builds, iOS-app typecheck, production-image smoke test, and 138 tests pass; a two-tab fresh create/join and button-control smoke test passed locally. |
 
 ## Ruleset decisions (Phase 00)
 
@@ -104,7 +104,7 @@
 - **Resolved in tournament ruleset (#18):** `classic-tournament-v1` provides a repetition draw for ranked/automated matches.
 - **Resolved in production hardening (#20):** rate limiting/abuse protection; request size limits; room TTL cleanup; room-code copy UX.
 - **Resolved in phone install/CI fix (#22):** CI build order fixed; PWA install path; native iOS app wired to shared GameScreen; App Store upload guide.
-- **Current web release blockers:** reliable first-click create/join; explicit redistribution selection; correct lobby/game and Add-AI visibility; tournament draw rendering; keyboard/touch accessibility. Full detail is in `docs/handoff.md`.
+- **Online release-blocker branch pending CI:** reliable first-click create/join, explicit redistribution selection, correct lobby/game and Add-AI visibility, tournament draw rendering, and keyboard/touch accessibility are implemented on `codex/online-release-blockers`; await Forgejo PR/Woodpecker evidence before calling them merged.
 - **Release-surface follow-ups:** prove the full built PWA works offline before claiming it; complete native device/TestFlight/App Store verification; add WebSocket/public-service hardening.
 - **Scale/maintenance follow-ups:** production-grade shared room store for horizontal scaling, macOS iOS runtime CI, and a root lint command.
 - **Environment status:** Docker Compose is available in the current environment and all review checks ran in the container. The 2026-08-16 worked-around decision remains historical context only.

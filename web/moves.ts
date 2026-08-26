@@ -1,4 +1,4 @@
-import type { Move } from "../src/index.js";
+import type { Move, RedistributeMove } from "../src/index.js";
 
 export function movesEqual(a: Move, b: Move): boolean {
   if (a.type !== b.type) return false;
@@ -9,4 +9,8 @@ export function movesEqual(a: Move, b: Move): boolean {
     return a.player === b.player && a.left === b.left && a.right === b.right;
   }
   return false;
+}
+
+export function redistributionLabel(move: RedistributeMove): string {
+  return `Set L ${move.left} · R ${move.right}`;
 }
