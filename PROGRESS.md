@@ -9,10 +9,10 @@
 
 ## Next action
 
-1. Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.
-2. Add an explicit identity-aware redistribution picker in both web clients.
-3. Carry tournament draw results through sync/WebSocket/client rendering.
-4. Make the online board player-relative and add keyboard/touch accessibility.
+1. ~~Fix the online connection/lobby lifecycle and local Vite WebSocket configuration, with fresh-page create/join tests.~~ Implemented locally (awaitable `connect()`, outbound queue via `web/outbox.ts`, `[hidden]` CSS rule, phase/role-aware Add AI, Vite `/ws` proxy). Pending branch/PR/CI.
+2. ~~Add an explicit identity-aware redistribution picker in both web clients.~~ Implemented locally (`web/redistribute.ts` + `web/splitPicker.ts`; both clients render every legal split). Pending branch/PR/CI.
+3. ~~Carry tournament draw results through sync/WebSocket/client rendering.~~ Implemented locally (`isDraw` through `sync()`, `state`/`move-accepted` messages, and the online client's `Draw by threefold repetition` rendering). Pending branch/PR/CI.
+4. Make the online board player-relative and add keyboard/touch accessibility. Partially done: `touch-action`, active-turn styling, non-colour turn cue, and reduced-motion are in; player-relative board orientation and full keyboard/button semantics remain.
 5. Only after those items pass CI and a two-browser playthrough should the web product be called release-ready. PWA offline proof, native App Store work, and public-service hardening remain separate follow-ups.
 
 ## Decision log
