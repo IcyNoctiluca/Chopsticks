@@ -2,8 +2,9 @@
 
 Woodpecker at `ci.battlenet.internal` is the primary CI system. It builds the
 Forgejo repository at `git.battlenet.internal`; Forgejo Actions is disabled on
-that instance. The GitHub workflow remains available for the public mirror, but
-it is not the working CI source of truth.
+that instance. GitHub is a continuously updated mirror (every push reaches it via
+`battlenet`'s second push URL); its `.github/workflows/ci.yml` still runs there
+but is not the working CI source of truth.
 
 ## Pipeline contract
 
@@ -57,6 +58,11 @@ git push -u battlenet HEAD
 git config remote.pushDefault battlenet
 git branch --set-upstream-to=battlenet/main main
 
+# Mirror every push to GitHub by giving battlenet a second push URL. Re-add the
+# Forgejo URL first: setting an explicit push URL otherwise replaces the implicit one.
+git remote set-url --add --push battlenet ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git
+git remote set-url --add --push battlenet git@github.com:IcyNoctiluca/Chopsticks.git
+
 # Find the Forgejo repository id, activate it, then enable only security trust.
 # Host curl uses the Mac keychain's trusted Battlenet Internal CA.
 FORGEJO_REPO_ID="$(tea api --login battlenet repos/liamp/Chopsticks | jq -r .id)"
@@ -105,12 +111,12 @@ tea pr create --login battlenet --repo liamp/Chopsticks \
   --title "..." --description "..."
 ```
 
-Require the Woodpecker pipeline to pass before merging. GitHub mirroring is a
-separate milestone operation and must not bypass the Forgejo PR gate. The
-authoritative mirror procedure is in `AGENTS.md`: push a temporary branch from
-the exact green `battlenet/main` state, open a GitHub PR, wait for its checks,
-and merge it with a merge commit. Never push `origin/main` directly or use
-squash/rebase for mirror PRs.
+Require the Woodpecker pipeline to pass before merging. GitHub is mirrored
+automatically — `git push -u battlenet HEAD` already published the branch there,
+and the second push URL keeps it current — so there is no separate mirror step
+and the Forgejo PR gate is never bypassed. After merging a Forgejo PR, run
+`git switch main && git pull --ff-only battlenet main && git push` to
+fast-forward `main` on both forges. See `AGENTS.md` for the remote layout.
 
 ## Local parity check
 

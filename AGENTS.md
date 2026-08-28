@@ -44,10 +44,10 @@ merge it" as authorization for the complete Forgejo delivery workflow below:
 7. **Clean up.** Remove the remote feature branch, isolated worktree, local
    feature branch, and temporary worktree directory. Finally fast-forward the
    primary checkout's `main` from `battlenet/main` without disturbing unrelated
-   user work.
+   user work, then `git push` so GitHub `main` fast-forwards too.
 
-This workflow does not automatically authorize a GitHub mirror. Mirror only
-under the milestone policy below.
+GitHub is mirrored automatically on every push (see the remotes section below);
+there is no separate mirror step.
 
 1. **Branch from `main`.** Forgejo is the working forge. Ensure local `main` is up to date first (`git switch main && git pull --ff-only battlenet main`), then create a phase branch, e.g. `git switch -c phase-03-verification-and-cli`.
 2. **Work on the branch.** Commit focused, conventional commits there. Run lint, typecheck (`npm run typecheck`), and tests (`npm test`) before considering the phase complete.
@@ -55,51 +55,47 @@ under the milestone policy below.
 4. **Open a Forgejo PR to `main`.** Use `tea pr create --login battlenet --repo liamp/Chopsticks --base main --head <branch>` with a summary of the phase work and evidence of meeting the exit criteria.
 5. **Wait for Woodpecker.** The `.woodpecker.yml` pipeline must pass before merge.
 6. **Merge the PR.** Merge in Forgejo (or via `tea pr merge`).
-7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` then `git branch -d <branch>`.
-8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main`.
+7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` (the delete fans out to both push URLs, so it also removes the branch from GitHub) then `git branch -d <branch>`.
+8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main && git push` (the final push fast-forwards GitHub `main`).
 9. **Repeat from step 1** for the next phase, branching off the updated `main`.
 
 Never commit directly to `main`. Keep `main` always green and deployable.
 
-### Git remotes and periodic GitHub mirroring
+### Git remotes and GitHub mirroring
 
-The remotes are deliberately not interchangeable:
+Forgejo is the working forge. GitHub is a continuously updated public copy, so a
+`git.battlenet.internal` outage never puts the code or its history at risk while
+keeping the hosting burden on GitHub.
 
-- `battlenet` (`ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git`)
-  is the working Forgejo remote watched by Woodpecker. `main` tracks
-  `battlenet/main`, and `remote.pushDefault` must remain `battlenet` so an
-  unqualified `git push` cannot accidentally publish to GitHub.
-- `origin` (`git@github.com:IcyNoctiluca/Chopsticks.git`) is a periodic public
-  mirror. Never push directly to `origin/main`, never do implementation work
-  there first, and never use GitHub to bypass the Forgejo PR and CI gate.
+- `battlenet` is the working Forgejo remote watched by Woodpecker. `main` tracks
+  `battlenet/main` and `remote.pushDefault` is `battlenet`. It has **two push
+  URLs** — the Forgejo repo and `git@github.com:IcyNoctiluca/Chopsticks.git` — so
+  a single `git push` (feature branches and `main`) lands on both forges.
+- `origin` (`git@github.com:IcyNoctiluca/Chopsticks.git`) is GitHub-only. Use it
+  for `git fetch`, `gh`, and any deliberate GitHub-only push.
 
-Mirror only at a meaningful milestone, after the relevant Forgejo PRs have
-merged and `battlenet/main` is green. Use an isolated worktree and a GitHub pull
-request from the exact Forgejo `main` state:
+Rules that still hold:
+
+- Do implementation work on Forgejo branches and gate every change through a
+  Forgejo PR plus a green Woodpecker pipeline. Do not open the PR on GitHub, and
+  never use GitHub to bypass the CI gate.
+- After a Forgejo PR merges, run
+  `git switch main && git pull --ff-only battlenet main && git push`. The push
+  fast-forwards `battlenet/main` (already current) and GitHub `main`.
+- GitHub `main` only ever fast-forwards from `battlenet/main`. If the two
+  diverge, realign GitHub with a one-time
+  `git push origin battlenet/main:main --force` — GitHub's content is always a
+  subset of Forgejo history.
+
+One-time configuration (already applied in this checkout):
 
 ```sh
-git fetch battlenet main
-git fetch origin main
-mirror_branch="codex/github-mirror-MILESTONE"
-mirror_parent="$(mktemp -d /private/tmp/chopsticks-github-mirror.XXXXXX)"
-mirror_worktree="$mirror_parent/worktree"
-git worktree add -b "$mirror_branch" "$mirror_worktree" battlenet/main
-git -C "$mirror_worktree" push -u origin "$mirror_branch"
-mirror_pr_url="$(gh pr create --repo IcyNoctiluca/Chopsticks \
-  --base main --head "$mirror_branch" \
-  --title "chore: mirror MILESTONE from Forgejo" \
-  --body "Periodic mirror of green Forgejo main; no GitHub-first changes.")"
-gh pr checks "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --watch
-gh pr merge "$mirror_pr_url" --repo IcyNoctiluca/Chopsticks --merge --delete-branch
-git worktree remove "$mirror_worktree"
-git branch -d "$mirror_branch"
-rmdir "$mirror_parent"
+git remote set-url --add --push battlenet ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git
+git remote set-url --add --push battlenet git@github.com:IcyNoctiluca/Chopsticks.git
 ```
 
-Use a merge commit for mirror PRs, not squash or rebase: preserving the Forgejo
-commits as GitHub ancestors keeps later milestone PRs incremental. If a change
-is ever made on GitHub first, port it onto a new branch from `battlenet/main`
-and merge it through Forgejo/Woodpecker before the next mirror. See `docs/ci.md`.
+The first line re-adds the Forgejo URL because setting an explicit push URL
+otherwise replaces the implicit one. See `docs/ci.md`.
 
 ## Containerised development
 
