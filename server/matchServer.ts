@@ -261,7 +261,7 @@ export class MatchServer {
     return { state: nextState, moveNumber: updated.expectedMoveNumber, winner: result.winner, isDraw: result.isDraw, accepted: true };
   }
 
-  sync(roomCode: RoomCode, clientId: ClientId): { state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase } {
+  sync(roomCode: RoomCode, clientId: ClientId): { state: GameState; history: Move[]; expectedMoveNumber: number; expectedTurn: PlayerId; phase: MatchPhase; isDraw: boolean } {
     const room = this.getRoom(roomCode);
     if (room.phase === "abandoned") throw new MatchServerError("match-abandoned", "Match was abandoned");
     const _ = this.playerForClient(room, clientId);
@@ -272,6 +272,7 @@ export class MatchServer {
       expectedMoveNumber: room.expectedMoveNumber,
       expectedTurn: room.expectedTurn,
       phase: room.phase,
+      isDraw: room.isDraw,
     };
   }
 
