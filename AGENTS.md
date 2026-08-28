@@ -55,8 +55,8 @@ there is no separate mirror step.
 4. **Open a Forgejo PR to `main`.** Use `tea pr create --login battlenet --repo liamp/Chopsticks --base main --head <branch>` with a summary of the phase work and evidence of meeting the exit criteria.
 5. **Wait for Woodpecker.** The `.woodpecker.yml` pipeline must pass before merge.
 6. **Merge the PR.** Merge in Forgejo (or via `tea pr merge`).
-7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` then `git branch -d <branch>`.
-8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main`.
+7. **Delete the branches.** Delete the local and remote phase branches: `git push battlenet --delete <branch>` (the delete fans out to both push URLs, so it also removes the branch from GitHub) then `git branch -d <branch>`.
+8. **Pull the latest `main`.** `git switch main && git pull --ff-only battlenet main && git push` (the final push fast-forwards GitHub `main`).
 9. **Repeat from step 1** for the next phase, branching off the updated `main`.
 
 Never commit directly to `main`. Keep `main` always green and deployable.
