@@ -210,4 +210,75 @@ describe("Chopsticks WebSocket transport", () => {
     expect(err.code).toBe("invalid-request");
     ws.close();
   });
+
+  it("state messages carry the isDraw result", async () => {
+    const ws = new WebSocket(env.url);
+    const q = createMessageQueue(ws);
+    await new Promise<void>((resolve, reject) => {
+      ws.once("open", resolve);
+      ws.once("error", reject);
+    });
+
+    send(ws, { type: "create", clientId: "alice", displayName: "Alice" });
+    const created = await q.waitFor("created");
+    expect(created.isDraw).toBeUndefined();
+
+    const state = await q.waitFor("state");
+    expect(state.isDraw).toBe(false);
+    ws.close();
+  });
+
+  it("broadcasts a draw to both participants after a threefold repetition", async () => {
+    const SIX_MOVE_CYCLE: Move[] = [
+      { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+      { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+      { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+      { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+      { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "right" },
+      { type: "redistribute", player: "B", right: 1, left: 1 },
+    ];
+
+    const alice = new WebSocket(env.url);
+    const bob = new WebSocket(env.url);
+    const aliceQ = createMessageQueue(alice);
+    const bobQ = createMessageQueue(bob);
+    await Promise.all([
+      new Promise<void>((resolve, reject) => { alice.once("open", resolve); alice.once("error", reject); }),
+      new Promise<void>((resolve, reject) => { bob.once("open", resolve); bob.once("error", reject); }),
+    ]);
+
+    send(alice, { type: "create", clientId: "alice", displayName: "Alice", rulesetId: "classic-tournament-v1" });
+    const created = await aliceQ.waitFor("created");
+    const roomCode = created.roomCode as string;
+    await aliceQ.waitFor("state");
+
+    send(bob, { type: "join", roomCode, clientId: "bob", displayName: "Bob" });
+    await bobQ.waitFor("joined");
+    await Promise.all([aliceQ.waitFor("state"), bobQ.waitFor("state")]);
+
+    let expectedTurn = "A";
+    let expectedMoveNumber = 0;
+    let lastAccepted: WSEvent | null = null;
+    let finalAliceState: WSEvent | null = null;
+    let finalBobState: WSEvent | null = null;
+    for (const move of [...SIX_MOVE_CYCLE, ...SIX_MOVE_CYCLE]) {
+      const client = expectedTurn === "A" ? alice : bob;
+      const clientId = expectedTurn === "A" ? "alice" : "bob";
+      send(client, { type: "move", roomCode, clientId, move, expectedMoveNumber });
+      const moverQ = expectedTurn === "A" ? aliceQ : bobQ;
+      lastAccepted = await moverQ.waitFor("move-accepted");
+      [finalAliceState, finalBobState] = await Promise.all([aliceQ.waitFor("state"), bobQ.waitFor("state")]);
+      expectedTurn = expectedTurn === "A" ? "B" : "A";
+      expectedMoveNumber = lastAccepted.moveNumber as number;
+    }
+
+    expect(lastAccepted!.isDraw).toBe(true);
+    expect(finalAliceState!.isDraw).toBe(true);
+    expect(finalBobState!.isDraw).toBe(true);
+    expect(finalAliceState!.phase).toBe("finished");
+    expect(finalBobState!.phase).toBe("finished");
+
+    alice.close();
+    bob.close();
+  });
 });

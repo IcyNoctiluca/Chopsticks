@@ -16,6 +16,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -91,6 +93,7 @@ h1 {
 
 .hand.draggable {
   cursor: grab;
+  touch-action: none;
 }
 
 .hand.draggable:active {
@@ -118,9 +121,11 @@ h1 {
   transform: rotate(180deg);
 }
 
-.hand.active {
+.player-row.active .hand {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px rgba(106, 166, 255, 0.15);
+  outline: 2px dashed var(--text);
+  outline-offset: 6px;
 }
 
 .hand.dead {
@@ -152,8 +157,33 @@ h1 {
 }
 
 #split-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+#add-ai-control {
   text-align: center;
   margin: 0 0 12px;
+}
+
+#add-ai-control button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+#add-ai-control button:hover { border-color: var(--accent); }
+
+.split-label {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 #split-control button {
@@ -276,3 +306,12 @@ h1 {
   font-size: 0.8rem;
 }
 .room-info button:hover { border-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
