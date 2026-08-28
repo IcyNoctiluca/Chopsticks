@@ -242,6 +242,41 @@ describe("MatchServer: finished matches reject moves", () => {
   });
 });
 
+describe("MatchServer: tournament draw result", () => {
+  const SIX_MOVE_CYCLE: Move[] = [
+    { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+    { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+    { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "left" },
+    { type: "tap", player: "B", source: "right", targetPlayer: "B", target: "left" },
+    { type: "tap", player: "A", source: "left", targetPlayer: "B", target: "right" },
+    { type: "redistribute", player: "B", right: 1, left: 1 },
+  ];
+
+  it("reports isDraw through sync after a threefold repetition", () => {
+    const s = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 60_000 });
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" }, { rulesetId: "classic-tournament-v1" });
+    s.joinRoom(r.roomCode, "bob", "Bob");
+
+    let sync = s.sync(r.roomCode, "alice");
+    for (const move of [...SIX_MOVE_CYCLE, ...SIX_MOVE_CYCLE]) {
+      const who = sync.expectedTurn === "A" ? "alice" : "bob";
+      s.submitMove(r.roomCode, who, move, sync.expectedMoveNumber);
+      sync = s.sync(r.roomCode, who);
+    }
+
+    expect(sync.isDraw).toBe(true);
+    expect(sync.phase).toBe("finished");
+  });
+
+  it("reports isDraw false for a normal classic-v1 room", () => {
+    const s = new MatchServer({ moveTimeoutMs: null, abandonedAfterMs: 60_000 });
+    const r = s.createRoom({ clientId: "alice", displayName: "Alice" });
+    s.joinRoom(r.roomCode, "bob", "Bob");
+    const sync = s.sync(r.roomCode, "alice");
+    expect(sync.isDraw).toBe(false);
+  });
+});
+
 describe("MatchServer: room phase / seat transitions", () => {
   it("rejects an AI host", () => {
     const s = newServer();
