@@ -1,17 +1,40 @@
-# Primary CI pipeline for the Forgejo repository on git.battlenet.internal.
+# Woodpecker CI for Chopsticks (ci.battlenet.internal), in the Battlenet
+# standard shape -- see the Battlenet repository's
+# docs/k3s/ci-standard-pipeline.md and docs/k3s/templates/standard.woodpecker.yml.
 #
-# The production-image smoke test uses Woodpecker's Docker-in-Docker pattern.
-# Enable security trust for this repository in Woodpecker so the privileged
-# Docker service can start. No repository secrets are required.
+#   pull request  -> verify, production-image-smoke   (no registry credential)
+#   push to main  -> verify, publish                  (multi-arch image into Zot)
+#   tag / manual  -> as push to main
+#
+# `publish` pushes registry.battlenet.internal/liamp/chopsticks under an
+# immutable $CI_COMMIT_SHA tag and a mutable :latest. A release is the digest
+# it prints, pinned in the Battlenet repository and deployed from Zot.
+#
+# The production-image smoke test and the publish step use Woodpecker's
+# Docker-in-Docker pattern; the repository is trusted for security in
+# Woodpecker (declared by Battlenet's ci_repo_policy role) so the privileged
+# sidecar can start. The three zot_* values are Woodpecker org secrets on the
+# liamp owner, visible to push/tag/manual pipelines only.
 
-# Feature branches are verified by their Forgejo pull-request event. Restrict
-# push runs to main so one PR update does not queue two identical workflows on
-# the wake-on-demand, single-workflow runner. Manual runs remain available.
+variables:
+  - &image_repo liamp/chopsticks
+  - &dockerfile Dockerfile.prod
+  - &build_context .
+  - &platforms "amd64 arm64"
+  # Woodpecker starts services and steps together and does not wait for the
+  # DinD daemon to listen; every docker-using step waits for it first, then
+  # asserts it is really up so a dead sidecar still fails loudly.
+  - &wait_for_docker >-
+    for i in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 1; done;
+    docker info >/dev/null
+
+# Feature branches are verified by their pull-request event; restricting push
+# runs to main keeps one PR update from queueing two identical workflows on
+# the wake-on-demand runner. Manual runs remain available.
 when:
   - event: pull_request
-  - event: push
+  - event: [push, tag, manual]
     branch: main
-  - event: manual
 
 services:
   docker:
@@ -33,23 +56,18 @@ steps:
       - npm test
       - npm --prefix ios-app run typecheck
 
+  # Pull requests prove the production image still builds and boots without
+  # receiving any registry credential. On main the same Dockerfile is built
+  # for real by `publish`, so this runs on pull requests only.
   production-image-smoke:
     image: docker:24-cli
     environment:
       DOCKER_HOST: tcp://docker:2375
+      DOCKERFILE: *dockerfile
+      BUILD_CONTEXT: *build_context
     commands:
-      - |
-        for i in $(seq 1 30); do
-          if docker info >/dev/null 2>&1; then
-            break
-          fi
-          if [ "$i" -eq 30 ]; then
-            echo "Docker service did not become ready" >&2
-            exit 1
-          fi
-          sleep 1
-        done
-      - docker build -f Dockerfile.prod -t chopsticks/server:ci .
+      - *wait_for_docker
+      - docker build -f "$DOCKERFILE" -t chopsticks/server:ci "$BUILD_CONTEXT"
       - docker run -d --name chopsticks-smoke --rm chopsticks/server:ci
       - |
         status=1
@@ -68,3 +86,57 @@ steps:
         fi
       - grep -q '"status":"ok"' /tmp/health.json
       - docker stop chopsticks-smoke
+    when:
+      - event: pull_request
+
+  # One build per architecture with the daemon-embedded builder, combined with
+  # `docker manifest` -- not `buildx --platform a,b --push`, whose separate
+  # BuildKit container never receives the internal CA and fails the push.
+  # $VAR, never ${VAR}: Woodpecker substitutes ${VAR} at compile time.
+  publish:
+    image: docker:24-cli
+    environment:
+      DOCKER_HOST: tcp://docker:2375
+      DOCKER_CLI_EXPERIMENTAL: enabled
+      IMAGE_REPO: *image_repo
+      DOCKERFILE: *dockerfile
+      BUILD_CONTEXT: *build_context
+      PLATFORMS: *platforms
+      ZOT_REGISTRY:
+        from_secret: zot_push_registry
+      ZOT_USER:
+        from_secret: zot_ci_username
+      ZOT_PASSWORD:
+        from_secret: zot_ci_password
+    commands:
+      - *wait_for_docker
+      - |
+        set -e
+        docker run --rm --privileged tonistiigi/binfmt --install all
+        echo "$ZOT_PASSWORD" | docker login "$ZOT_REGISTRY" -u "$ZOT_USER" --password-stdin
+        REF="$ZOT_REGISTRY/$IMAGE_REPO"
+        ARCH_REFS=""
+        for arch in $PLATFORMS; do
+          docker build --platform "linux/$arch" -f "$DOCKERFILE" \
+            -t "$REF:$CI_COMMIT_SHA-$arch" "$BUILD_CONTEXT"
+          docker push "$REF:$CI_COMMIT_SHA-$arch"
+          ARCH_REFS="$ARCH_REFS $REF:$CI_COMMIT_SHA-$arch"
+        done
+        # The immutable tag first: it is the release pointer. Its digest is
+        # what a deployment pins.
+        docker manifest create "$REF:$CI_COMMIT_SHA" $ARCH_REFS
+        docker manifest push "$REF:$CI_COMMIT_SHA" | tee manifest-push.out
+        grep -o 'sha256:[a-f0-9]*' manifest-push.out | head -1 > digest.txt
+        # :latest is a browse pointer only; nothing may pin it.
+        docker manifest create "$REF:latest" $ARCH_REFS
+        docker manifest push "$REF:latest"
+        TAG_NOTE=""
+        if [ -n "$CI_COMMIT_TAG" ]; then
+          docker manifest create "$REF:$CI_COMMIT_TAG" $ARCH_REFS
+          docker manifest push "$REF:$CI_COMMIT_TAG"
+          TAG_NOTE=", $CI_COMMIT_TAG"
+        fi
+        echo "Published $REF@$(cat digest.txt) (tags: $CI_COMMIT_SHA, latest$TAG_NOTE)"
+    when:
+      - event: [push, tag, manual]
+        branch: main
