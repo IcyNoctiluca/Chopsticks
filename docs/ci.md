@@ -1,10 +1,10 @@
 # Continuous integration
 
-Woodpecker at `ci.battlenet.internal` is the primary CI system. It builds the
-Forgejo repository at `git.battlenet.internal`; Forgejo Actions is disabled on
-that instance. GitHub is a continuously updated mirror (every push reaches it via
-`battlenet`'s second push URL); its `.github/workflows/ci.yml` still runs there
-but is not the working CI source of truth.
+Woodpecker at `ci.battlenet.l-p.dev` is the only CI system. It builds the
+canonical Forgejo repository at `git.battlenet.l-p.dev`; Forgejo Actions is
+disabled on that instance. GitHub `IcyNoctiluca/Chopsticks` is a read-only push
+mirror that Forgejo updates on every commit (Battlenet progress 0274). GitHub
+Actions is disabled there, so `.github/workflows/ci.yml` no longer runs.
 
 ## Pipeline contract
 
@@ -38,7 +38,7 @@ docker run --rm -v "$PWD:/workspace" -w /workspace \
 The working Git remote is:
 
 ```sh
-git remote add battlenet ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git
+git remote add origin ssh://git@git.battlenet.l-p.dev:30022/liamp/Chopsticks.git
 ```
 
 Create the private Forgejo repository without initial files, push the existing
@@ -52,29 +52,27 @@ exported for the current shell. Do not commit either token:
 
 ```sh
 # Forgejo CLI login can also be created interactively with: tea login add --oauth
-tea repo create --login battlenet --name Chopsticks --private
-git push battlenet main
-git push -u battlenet HEAD
-git config remote.pushDefault battlenet
-git branch --set-upstream-to=battlenet/main main
+tea repo create --login battlenet-lp --name Chopsticks --private
+git push origin main
+git push -u origin HEAD
+git branch --set-upstream-to=origin/main main
 
-# Mirror every push to GitHub by giving battlenet a second push URL. Re-add the
-# Forgejo URL first: setting an explicit push URL otherwise replaces the implicit one.
-git remote set-url --add --push battlenet ssh://git@git.battlenet.internal:30022/liamp/Chopsticks.git
-git remote set-url --add --push battlenet git@github.com:IcyNoctiluca/Chopsticks.git
+# GitHub is not configured here: Forgejo's push mirror (Battlenet
+# `forgejo_push_mirrors`) replicates to it. Keep a fetch-only copy of it:
+git remote add github git@github.com:IcyNoctiluca/Chopsticks.git
+git remote set-url --push github DISABLED-mirror-only-see-AGENTS.md
 
 # Find the Forgejo repository id, activate it, then enable only security trust.
-# Host curl uses the Mac keychain's trusted Battlenet Internal CA.
-FORGEJO_REPO_ID="$(tea api --login battlenet repos/liamp/Chopsticks | jq -r .id)"
+FORGEJO_REPO_ID="$(tea api --login battlenet-lp repos/liamp/Chopsticks | jq -r .id)"
 WOODPECKER_REPO="$(curl -fsS -X POST \
   -H "Authorization: Bearer $WOODPECKER_TOKEN" \
-  "https://ci.battlenet.internal/api/repos?forge_remote_id=$FORGEJO_REPO_ID")"
+  "https://ci.battlenet.l-p.dev/api/repos?forge_remote_id=$FORGEJO_REPO_ID")"
 WOODPECKER_REPO_ID="$(printf '%s' "$WOODPECKER_REPO" | jq -r .id)"
 curl -fsS -X PATCH \
   -H "Authorization: Bearer $WOODPECKER_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"trusted":{"security":true,"volumes":false,"network":false}}' \
-  "https://ci.battlenet.internal/api/repos/$WOODPECKER_REPO_ID" | \
+  "https://ci.battlenet.l-p.dev/api/repos/$WOODPECKER_REPO_ID" | \
   jq '{id,full_name,active,trusted}'
 
 # Trigger the first run after activation (the earlier push predates its webhook).
@@ -84,7 +82,7 @@ jq -n --arg branch "$CURRENT_BRANCH" '{branch:$branch,variables:{}}' | \
     -H "Authorization: Bearer $WOODPECKER_TOKEN" \
     -H 'Content-Type: application/json' \
     -d @- \
-    "https://ci.battlenet.internal/api/repos/$WOODPECKER_REPO_ID/pipelines" | \
+    "https://ci.battlenet.l-p.dev/api/repos/$WOODPECKER_REPO_ID/pipelines" | \
   jq '{id,number,status,event,branch,commit}'
 unset WOODPECKER_TOKEN
 ```
@@ -102,21 +100,20 @@ phase branch, and open a Forgejo pull request:
 
 ```sh
 git switch main
-git pull --ff-only battlenet main
+git pull --ff-only origin main
 git switch -c codex/<topic>
 # edit, verify, commit
-git push -u battlenet HEAD
-tea pr create --login battlenet --repo liamp/Chopsticks \
+git push -u origin HEAD
+tea pr create --login battlenet-lp --repo liamp/Chopsticks \
   --base main --head "$(git branch --show-current)" \
   --title "..." --description "..."
 ```
 
-Require the Woodpecker pipeline to pass before merging. GitHub is mirrored
-automatically — `git push -u battlenet HEAD` already published the branch there,
-and the second push URL keeps it current — so there is no separate mirror step
-and the Forgejo PR gate is never bypassed. After merging a Forgejo PR, run
-`git switch main && git pull --ff-only battlenet main && git push` to
-fast-forward `main` on both forges. See `AGENTS.md` for the remote layout.
+Require the Woodpecker pipeline to pass before merging. There is no mirror
+step: Forgejo pushes every ref to GitHub itself, and never push to GitHub
+directly (the next sync overwrites it). After merging a Forgejo PR, run
+`git switch main && git pull --ff-only origin main`. See `AGENTS.md` for the
+remote layout.
 
 ## Local parity check
 
