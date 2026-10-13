@@ -139,6 +139,14 @@ steps:
             docker push "$REF:buildcache-$stage-$arch"
             CACHE_FROM="$CACHE_FROM --cache-from $REF:buildcache-$stage-$arch"
           done
+          docker build --platform "linux/$arch" -f "$DOCKERFILE" \
+            --build-arg BUILDKIT_INLINE_CACHE=1 $CACHE_FROM \
+            -t "$REF:$CI_COMMIT_SHA-$arch" "$BUILD_CONTEXT"
+          docker push "$REF:$CI_COMMIT_SHA-$arch"
+          docker tag "$REF:$CI_COMMIT_SHA-$arch" "$REF:latest-$arch"
+          docker push "$REF:latest-$arch"
+          ARCH_REFS="$ARCH_REFS $REF:$CI_COMMIT_SHA-$arch"
+        done
         # The immutable tag first: it is the release pointer. Its digest is
         # what a deployment pins.
         docker manifest create "$REF:$CI_COMMIT_SHA" $ARCH_REFS
