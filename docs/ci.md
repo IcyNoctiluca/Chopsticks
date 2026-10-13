@@ -26,6 +26,12 @@ Dockerfiles. The image smoke step waits for its Docker-in-Docker service to be
 ready, which is necessary even when a warm dependency cache makes the verify
 step finish quickly. It requires no project secrets.
 
+On `main`, `publish` builds with a layer cache carried in Zot (Battlenet
+progress 0385). `Dockerfile.prod`'s `deps` stage (`package.json` and the
+lockfile, `npm ci`) is listed in `cache_stages` and cached as
+`buildcache-deps-<arch>`; `builder` starts from it and adds the source. Keep
+the source out of `deps`, or every commit reinstalls every dependency.
+
 Validate pipeline syntax against the server's Woodpecker version before push:
 
 ```sh
