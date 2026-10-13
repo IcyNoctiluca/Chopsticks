@@ -1,11 +1,16 @@
 # Production runtime image for the Chopsticks match server.
 # Builds the server once and runs the compiled artifact with Node.
-FROM node:25-slim AS builder
+# Dependencies from the manifests alone, so CI's build cache (`cache_stages`,
+# Battlenet progress 0385) reuses this stage until they change; the source is
+# copied in the stage below.
+FROM node:25-slim AS deps
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN npm ci
+
+FROM deps AS builder
 
 COPY . .
 RUN npm run build:server
