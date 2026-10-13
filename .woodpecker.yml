@@ -21,6 +21,11 @@ variables:
   - &dockerfile Dockerfile.prod
   - &build_context .
   - &platforms "amd64 arm64"
+  # Space-separated Dockerfile stages that `publish` builds and caches on
+  # their own before the image (`buildcache-<stage>-<arch>` in Zot). BuildKit's
+  # inline cache records only the final stage, so a stage the image copies
+  # from is otherwise rebuilt every run. Empty for a single-stage Dockerfile.
+  - &cache_stages "deps"
   # Woodpecker starts services and steps together and does not wait for the
   # DinD daemon to listen; every docker-using step waits for it first, then
   # asserts it is really up so a dead sidecar still fails loudly.
@@ -102,6 +107,7 @@ steps:
       DOCKERFILE: *dockerfile
       BUILD_CONTEXT: *build_context
       PLATFORMS: *platforms
+      CACHE_STAGES: *cache_stages
       ZOT_REGISTRY:
         from_secret: zot_push_registry
       ZOT_USER:
@@ -117,11 +123,22 @@ steps:
         REF="$ZOT_REGISTRY/$IMAGE_REPO"
         ARCH_REFS=""
         for arch in $PLATFORMS; do
-          docker build --platform "linux/$arch" -f "$DOCKERFILE" \
-            -t "$REF:$CI_COMMIT_SHA-$arch" "$BUILD_CONTEXT"
-          docker push "$REF:$CI_COMMIT_SHA-$arch"
-          ARCH_REFS="$ARCH_REFS $REF:$CI_COMMIT_SHA-$arch"
-        done
+          # Layer cache, carried in Zot because each pipeline's DinD daemon
+          # starts empty: every build writes BuildKit's inline cache into its
+          # image and reads it back from the last one pushed. A step whose
+          # inputs are unchanged reuses the pushed layer, digest and all, so
+          # an unchanged dependency stack costs neither a rebuild nor a new
+          # blob in Zot. A cache image that does not exist yet (the first
+          # run, a new arch) is a miss, not an error.
+          CACHE_FROM="--cache-from $REF:latest-$arch"
+          for stage in $CACHE_STAGES; do
+            docker build --platform "linux/$arch" -f "$DOCKERFILE" --target "$stage" \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              --cache-from "$REF:buildcache-$stage-$arch" \
+              -t "$REF:buildcache-$stage-$arch" "$BUILD_CONTEXT"
+            docker push "$REF:buildcache-$stage-$arch"
+            CACHE_FROM="$CACHE_FROM --cache-from $REF:buildcache-$stage-$arch"
+          done
         # The immutable tag first: it is the release pointer. Its digest is
         # what a deployment pins.
         docker manifest create "$REF:$CI_COMMIT_SHA" $ARCH_REFS
